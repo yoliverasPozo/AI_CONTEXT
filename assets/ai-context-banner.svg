@@ -24,7 +24,7 @@
   <rect width="1280" height="640" rx="22" fill="url(#dots)" opacity="0.45"/>
   <rect x="1" y="1" width="1278" height="638" rx="21" fill="none" stroke="#28406f" opacity="0.65"/>
 
-  <text x="58" y="108" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="68" font-weight="700" fill="#ffffff">AI_Context</text>
+  <text x="58" y="108" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="68" font-weight="700" fill="#ffffff">AI_CONTEXT</text>
   <text x="60" y="151" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" fill="#aebfe1">Repository-native shared memory</text>
   <text x="60" y="184" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="25" fill="#aebfe1">for AI agents &amp; humans</text>
   <rect x="60" y="212" width="152" height="3" rx="2" fill="url(#accent)"/>
