@@ -1,4 +1,4 @@
-# AI_Context
+# AI_CONTEXT
 
 <p align="center">
   <img src="assets/ai-context-banner.svg" alt="AI_Context — Repository-native shared memory for AI agents and humans" width="100%">
@@ -6,13 +6,13 @@
 
 **Repository-native shared memory for AI coding agents.**
 
-AI_Context is a lightweight, vendor-neutral pattern for preserving the engineering context that normally gets trapped inside one AI chat, one coding agent, or one context window.
+AI_CONTEXT is a lightweight, vendor-neutral pattern for preserving the engineering context that normally gets trapped inside one AI chat, one coding agent, or one context window.
 
 The idea is simple:
 
 > Put the important project memory in the repository, then let every AI agent read and maintain the same source of truth.
 
-Instead of depending on a particular model's conversation history, AI_Context stores concise, durable project knowledge alongside the code:
+Instead of depending on a particular model's conversation history, AI_CONTEXT stores concise, durable project knowledge alongside the code:
 
 ```text
 project/
@@ -42,13 +42,13 @@ Important context can disappear when:
 
 Source code answers **what exists**. It often does not answer **why it exists, what was tried, what is currently broken, or what should happen next**.
 
-AI_Context externalizes that missing layer into ordinary Markdown tracked with the project.
+AI_CONTEXT externalizes that missing layer into ordinary Markdown tracked with the project.
 
 ---
 
 ## The core idea
 
-AI_Context separates project memory into three kinds of information.
+AI_CONTEXT separates project memory into three kinds of information.
 
 ### 1. Current state — `docs/AI_CONTEXT.md`
 
@@ -106,7 +106,7 @@ Because raw chat history is usually the wrong abstraction for long-term engineer
 
 Raw transcripts are noisy, repetitive, expensive to reload into context, full of temporary speculation, likely to contain irrelevant tool output, potentially sensitive, tied to one product's conversation format, and poor at distinguishing current truth from ideas that were later rejected.
 
-AI_Context stores the **engineering result of the conversation**, not a transcript of it.
+AI_CONTEXT stores the **engineering result of the conversation**, not a transcript of it.
 
 Record conclusions, requirements, constraints, tradeoffs, experiments, failures, test results, and decisions.
 
@@ -136,7 +136,7 @@ The shared memory files are intentionally independent of the tool that reads the
 
 Different agents can use their native project instruction mechanism as a thin adapter into the same context:
 
-| Agent / tool | Typical repository entry point | Role in AI_Context |
+| Agent / tool | Typical repository entry point | Role in AI_CONTEXT |
 | --- | --- | --- |
 | OpenAI Codex | `AGENTS.md` | Tell Codex to read and maintain the shared context |
 | Claude Code | `CLAUDE.md` | Point Claude at the same shared context and rules |
@@ -310,7 +310,7 @@ The repository becomes the continuity layer.
 
 ## Design principles
 
-AI_Context is intentionally boring technology:
+AI_CONTEXT is intentionally boring technology:
 
 1. **Plain Markdown** — readable by humans and models.
 2. **Git-native** — versioned with the work it explains.
@@ -327,7 +327,7 @@ AI_Context is intentionally boring technology:
 
 ## Existing ideas this builds on
 
-AI_Context combines several established practices rather than inventing a proprietary memory format: repository instruction files used by modern coding agents, Architecture Decision Records (ADRs), developer handoff notes, engineering journals, and docs-as-code.
+AI_CONTEXT combines several established practices rather than inventing a proprietary memory format: repository instruction files used by modern coding agents, Architecture Decision Records (ADRs), developer handoff notes, engineering journals, and docs-as-code.
 
 Useful references:
 
@@ -352,4 +352,4 @@ Contributions and real-world examples are welcome.
 
 ## A one-sentence definition
 
-> **AI_Context is a repository-native shared memory pattern that lets humans and different AI agents preserve and recover the current state, important decisions, and useful development history of a project without relying on any single chat session.**
+> **AI_CONTEXT is a repository-native shared memory pattern that lets humans and different AI agents preserve and recover the current state, important decisions, and useful development history of a project without relying on any single chat session.**
