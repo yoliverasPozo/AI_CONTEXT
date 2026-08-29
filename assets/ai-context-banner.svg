@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
-  <title id="title">AI_Context</title>
+  <title id="title">AI_CONTEXT</title>
   <desc id="desc">Repository-native shared memory for AI agents and humans</desc>
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
