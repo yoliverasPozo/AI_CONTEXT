@@ -1,5 +1,9 @@
 # AI_Context
 
+<p align="center">
+  <img src="assets/ai-context-banner.svg" alt="AI_Context — Repository-native shared memory for AI agents and humans" width="100%">
+</p>
+
 **Repository-native shared memory for AI coding agents.**
 
 AI_Context is a lightweight, vendor-neutral pattern for preserving the engineering context that normally gets trapped inside one AI chat, one coding agent, or one context window.
