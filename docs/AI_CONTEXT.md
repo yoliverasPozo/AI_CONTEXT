@@ -89,7 +89,7 @@ The project should avoid adding tooling that makes the Markdown convention depen
 
 ## Active Work
 
-A documentation pull request is being used to demonstrate how AI_CONTEXT itself should evolve: change the project on a feature branch, update shared context with the change, preserve a useful session handoff, and review the result through a pull request before merging.
+The immediate work is to continue dogfooding the live context while evolving the project, using normal Git branches and pull requests for substantial changes so the repository itself remains a practical demonstration of the convention.
 
 ## Next Steps
 
@@ -123,7 +123,7 @@ Likely next work includes:
 
 On 2026-08-31, the repository structure and canonical templates were inspected directly from the `main` branch before initializing the live context layer. The live files were created using the repository's own template structure and naming conventions.
 
-For the version-controlled-memory documentation change, work was performed on the `docs/versioned-memory` feature branch. The README and live project context were updated on that branch before opening a pull request, demonstrating that memory changes can be reviewed in the same Git workflow as other repository changes.
+For the version-controlled-memory documentation change, work was performed on the `docs/versioned-memory` feature branch. The README and live project context were updated on that branch before opening pull request #1, demonstrating that memory changes can be reviewed in the same Git workflow as other repository changes.
 
 There is currently no executable test suite. Validation consists of repository inspection, consistency with the documented convention, and review of the branch diff before merge.
 
