@@ -111,6 +111,30 @@ Session journals should be created for meaningful work, **not every chat or tiny
 
 ---
 
+## Version-controlled memory
+
+Because AI_CONTEXT lives in the repository, project memory becomes a **first-class versioned artifact** rather than an invisible side effect of a chat session.
+
+Git automatically gives the shared memory many of the same properties as source code:
+
+- **History** — each commit preserves what the project's shared understanding looked like at that point in time.
+- **Diffs** — reviewers can see exactly how project state, assumptions, decisions, or next steps changed alongside the implementation.
+- **Review** — memory changes can be inspected in pull requests instead of being silently accepted because an AI said them.
+- **Attribution** — commit history and blame can help identify when a piece of context was introduced or changed.
+- **Rollback** — an incorrect or premature context update can be reverted like any other repository change.
+- **Correlation with code** — context can be committed alongside the code, configuration, or documentation that caused the project's understanding to change.
+- **Historical reconstruction** — checking out an older commit can reveal both the implementation and the shared project context that existed at that stage.
+
+This creates a useful kind of **memory archaeology**: humans and agents can inspect not only what the project became, but how its shared understanding evolved.
+
+For example, a commit that changes an authentication architecture can update both the implementation and `docs/AI_CONTEXT.md`. A later agent can inspect the diff and see that the code changed **and** that the project's authoritative description changed with it.
+
+That also makes incorrect memory visible. If an agent marks a problem as solved when the code or tests do not support that claim, the context change appears in the same reviewable history as the rest of the work.
+
+> **AI_CONTEXT turns project memory into a shared, auditable, version-controlled artifact of the repository.**
+
+---
+
 ## Why not just save the whole AI chat?
 
 Because raw chat history is usually the wrong abstraction for long-term engineering memory.
