@@ -1,7 +1,7 @@
 # AI_CONTEXT
 
 <p align="center">
-  <img src="assets/ai-context-banner.svg" alt="AI_Context — Repository-native shared memory for AI agents and humans" width="100%">
+  <img src="assets/ai-context-banner.svg" alt="AI_CONTEXT — Repository-native shared memory for AI agents and humans" width="100%">
 </p>
 
 **Repository-native shared memory for AI coding agents.**
@@ -24,6 +24,17 @@ project/
 ```
 
 The result is a practical bridge between Codex, Claude Code, Gemini CLI, other coding agents, human developers, and future sessions that have never seen the original conversation.
+
+### This repository uses AI_CONTEXT itself
+
+AI_CONTEXT is intentionally **dogfooding its own convention**. The generic files under `templates/` and `examples/` teach other projects how to adopt the pattern, while this repository's own live shared memory is maintained in:
+
+- [`AGENTS.md`](AGENTS.md) — project-specific agent instructions;
+- [`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) — the current state of AI_CONTEXT itself;
+- [`docs/decisions/`](docs/decisions/) — real decisions made while evolving the project;
+- [`docs/sessions/`](docs/sessions/) — real development handoffs for future agents and contributors.
+
+That makes this repository both the reference material **and a working example**. The first decision record documents why the project chose to self-host the pattern: [`0001-dogfood-ai-context.md`](docs/decisions/0001-dogfood-ai-context.md).
 
 ---
 
@@ -274,7 +285,7 @@ Agent B starts later
 repeats the same investigation
 ```
 
-With AI_Context:
+With AI_CONTEXT:
 
 ```text
 Agent A
@@ -305,6 +316,9 @@ The repository becomes the continuity layer.
 - [`examples/CLAUDE.md`](examples/CLAUDE.md) — Claude Code adapter
 - [`examples/GEMINI.md`](examples/GEMINI.md) — Gemini CLI adapter
 - [`docs/ADOPTION.md`](docs/ADOPTION.md) — guidance for introducing the pattern to an existing project
+- [`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) — this repository's live current-state context
+- [`docs/decisions/`](docs/decisions/) — this repository's real durable decisions
+- [`docs/sessions/`](docs/sessions/) — this repository's real development handoffs
 
 ---
 
