@@ -33,6 +33,8 @@ The repository is organized into two layers:
 
 The reference templates remain generic. The live project-memory files contain AI_CONTEXT's own real state and history.
 
+Because the live memory is stored in Git, its evolution is also versioned: commits preserve historical project state, diffs expose context changes for review, and incorrect memory can be reverted alongside code or documentation.
+
 ## Current State
 
 The project is public under the MIT License and currently provides:
@@ -45,7 +47,8 @@ The project is public under the MIT License and currently provides:
 - example adapters for Codex/`AGENTS.md`, Claude Code/`CLAUDE.md`, Gemini CLI/`GEMINI.md`, and generic agents;
 - adoption and convention documentation;
 - a repository banner/social-preview design;
-- a live AI_CONTEXT implementation in this repository itself.
+- a live AI_CONTEXT implementation in this repository itself;
+- explicit documentation of Git-backed, version-controlled memory as a core benefit of the repository-native approach.
 
 The repository was renamed from `AI_Context` to `AI_CONTEXT` to visually match the canonical `AI_CONTEXT.md` file and strengthen the identity of the convention.
 
@@ -72,6 +75,8 @@ The project should avoid adding tooling that makes the Markdown convention depen
 - Added a visual repository banner.
 - Added an MIT License.
 - Initialized AI_CONTEXT inside its own repository by adding live project context, project-level agent instructions, an ADR, and a session handoff.
+- Added a README section explaining that repository-native memory is also version-controlled, reviewable, attributable, revertible, and historically reconstructable through Git.
+- Demonstrated the intended contribution workflow for that documentation change by using a feature branch, separate commits, live-context maintenance, a session handoff, and a pull request rather than editing `main` directly.
 
 ## Important Decisions
 
@@ -80,10 +85,11 @@ The project should avoid adding tooling that makes the Markdown convention depen
 - Current state, durable decisions, and session handoffs are separate information layers.
 - Tool-specific instruction files are thin adapters into a shared context layer rather than separate competing memories.
 - This repository dogfoods AI_CONTEXT while keeping its reusable templates distinct from its own live context. See [`docs/decisions/0001-dogfood-ai-context.md`](decisions/0001-dogfood-ai-context.md).
+- Git history is treated as part of the value of the repository-native design: memory changes should remain inspectable and reviewable alongside the project changes they describe.
 
 ## Active Work
 
-The immediate work is to use this live context layer while evolving the project, so future additions can test whether the convention remains concise, recoverable, and useful across agents and sessions.
+A documentation pull request is being used to demonstrate how AI_CONTEXT itself should evolve: change the project on a feature branch, update shared context with the change, preserve a useful session handoff, and review the result through a pull request before merging.
 
 ## Next Steps
 
@@ -96,6 +102,7 @@ Likely next work includes:
 5. Add CI/GitHub Action examples once there is something meaningful to validate.
 6. Collect real-world examples and compatibility notes from additional coding agents and IDEs.
 7. Keep README, convention, adoption guide, templates, examples, and live context synchronized as the format evolves.
+8. Consider whether future tooling should expose or summarize context history/diffs without duplicating Git's native capabilities.
 
 ## Important Files
 
@@ -116,7 +123,9 @@ Likely next work includes:
 
 On 2026-08-31, the repository structure and canonical templates were inspected directly from the `main` branch before initializing the live context layer. The live files were created using the repository's own template structure and naming conventions.
 
-There is currently no executable test suite. Validation for this initialization consists of repository inspection, consistency with the documented convention, and verification that the live files exist on `main`.
+For the version-controlled-memory documentation change, work was performed on the `docs/versioned-memory` feature branch. The README and live project context were updated on that branch before opening a pull request, demonstrating that memory changes can be reviewed in the same Git workflow as other repository changes.
+
+There is currently no executable test suite. Validation consists of repository inspection, consistency with the documented convention, and review of the branch diff before merge.
 
 ---
 
