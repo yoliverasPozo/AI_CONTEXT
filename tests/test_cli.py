@@ -19,7 +19,7 @@ class InitTests(unittest.TestCase):
         self.addCleanup(temp.cleanup)
         nested = root / "a" / "b"
         nested.mkdir(parents=True)
-        self.assertEqual(find_git_root(nested), root)
+        self.assertEqual(find_git_root(nested), root.resolve())
 
     def test_initialize_core_and_selected_adapters(self) -> None:
         temp, root = self.make_repo()
