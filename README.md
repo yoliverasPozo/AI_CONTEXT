@@ -216,6 +216,66 @@ That small feedback loop is the heart of the pattern.
 
 ---
 
+## Optional CLI — v0.1
+
+AI_CONTEXT does **not** require a CLI. The Markdown convention above remains the source of truth and can always be adopted manually.
+
+For convenience, v0.1 includes a small Python command that scaffolds the same structure in an existing Git repository. It has no runtime dependencies, makes no network calls, and does not invoke an LLM.
+
+Until a package release is published, install it directly from GitHub:
+
+```bash
+python -m pip install "git+https://github.com/yoliverasPozo/AI_CONTEXT.git"
+```
+
+Then run this from anywhere inside the Git repository you want to initialize:
+
+```bash
+ai-context init
+```
+
+In an interactive terminal, the command offers optional agent adapters. You can also select them explicitly:
+
+```bash
+ai-context init --agents codex,claude
+ai-context init --agents gemini
+ai-context init --agents generic
+ai-context init --agents none
+```
+
+Adapter mapping:
+
+| Selection | File created |
+| --- | --- |
+| `codex` | `AGENTS.md` |
+| `claude` | `CLAUDE.md` |
+| `gemini` | `GEMINI.md` |
+| `generic` | `AI_CONTEXT_PROMPT.md` |
+
+The core initialization always creates:
+
+```text
+docs/
+├── AI_CONTEXT.md
+├── decisions/
+└── sessions/
+```
+
+Useful safety options:
+
+```bash
+ai-context init --dry-run --agents codex
+ai-context init --force --agents codex
+```
+
+`--dry-run` shows what would change without writing files. Existing AI_CONTEXT-managed files are never overwritten by default; `--force` must be supplied explicitly and should be used carefully.
+
+After initialization, ask your chosen AI agent to inspect the repository and populate `docs/AI_CONTEXT.md` from the actual project state.
+
+The design decision behind the CLI is recorded in [`0002-python-cli-v0.1.md`](docs/decisions/0002-python-cli-v0.1.md).
+
+---
+
 ## Suggested workflow
 
 ### At the start of substantial work
@@ -343,6 +403,9 @@ The repository becomes the continuity layer.
 - [`docs/AI_CONTEXT.md`](docs/AI_CONTEXT.md) — this repository's live current-state context
 - [`docs/decisions/`](docs/decisions/) — this repository's real durable decisions
 - [`docs/sessions/`](docs/sessions/) — this repository's real development handoffs
+- [`src/ai_context/`](src/ai_context/) — optional CLI implementation
+- [`tests/`](tests/) — CLI and resource-synchronization tests
+- [`pyproject.toml`](pyproject.toml) — Python package metadata and `ai-context` console entry point
 
 ---
 
@@ -378,11 +441,11 @@ Useful references:
 
 ## Status
 
-This repository currently defines a **convention and reusable template**, not a formal protocol or standard.
+AI_CONTEXT currently provides both the **vendor-neutral Markdown convention** and an optional **v0.1 initializer CLI**.
 
-That is intentional. The first goal is to make the pattern easy to understand, copy, test, and improve across real projects.
+The CLI is intentionally small: it scaffolds the repository memory layer and optional agent adapters, but it does not generate project context with an LLM and is not required to use the convention.
 
-Potential future additions include a small initializer CLI, validation/linting for context files, stale-context detection, automatic context-size checks, adapters for additional agents and IDEs, optional machine-readable metadata, and GitHub Actions that verify required sections and broken links.
+Likely future additions include `ai-context check`, stale-context detection, context-size checks, additional agent/IDE adapters, optional machine-readable metadata, improved release/distribution options, and richer CI integration.
 
 Contributions and real-world examples are welcome.
 

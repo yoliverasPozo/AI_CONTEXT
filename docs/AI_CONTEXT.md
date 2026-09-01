@@ -13,11 +13,11 @@ The repository should serve both as:
 
 ## Current Architecture
 
-The repository is organized into two layers:
+The repository is organized into three layers:
 
 ### Reference layer
 
-- `README.md` — public introduction, rationale, workflow, and high-level documentation.
+- `README.md` — public introduction, rationale, workflow, CLI usage, and high-level documentation.
 - `docs/CONVENTION.md` — lightweight normative description of the AI_CONTEXT convention.
 - `docs/ADOPTION.md` — guidance for introducing AI_CONTEXT into an existing project.
 - `templates/` — generic templates for current-state context, ADRs, and session handoffs.
@@ -35,6 +35,16 @@ The reference templates remain generic. The live project-memory files contain AI
 
 Because the live memory is stored in Git, its evolution is also versioned: commits preserve historical project state, diffs expose context changes for review, and incorrect memory can be reverted alongside code or documentation.
 
+### Optional tooling layer
+
+- `pyproject.toml` — Python package metadata and the `ai-context` console entry point.
+- `src/ai_context/` — standard-library-only CLI implementation.
+- `src/ai_context/resources/` — bundled copies of the canonical Markdown resources required by the installed CLI.
+- `tests/` — unit tests for initialization behavior and resource synchronization.
+- `.github/workflows/tests.yml` — cross-platform CI on supported Python versions.
+
+The tooling layer supports the Markdown convention but is not required to use it.
+
 ## Current State
 
 The project is public under the MIT License and currently provides:
@@ -48,24 +58,27 @@ The project is public under the MIT License and currently provides:
 - adoption and convention documentation;
 - a repository banner/social-preview design;
 - a live AI_CONTEXT implementation in this repository itself;
-- explicit documentation of Git-backed, version-controlled memory as a core benefit of the repository-native approach.
+- explicit documentation of Git-backed, version-controlled memory as a core benefit of the repository-native approach;
+- `ai-context` CLI v0.1 with the `init` command;
+- automated unit tests and GitHub Actions CI for the executable tooling.
+
+`ai-context init` detects the Git repository root, creates `docs/AI_CONTEXT.md`, `docs/decisions/`, and `docs/sessions/`, and can optionally install selected agent adapters. It supports `--dry-run` and explicit `--force` overwrite behavior and does not call an LLM or require network access at runtime.
 
 The repository was renamed from `AI_Context` to `AI_CONTEXT` to visually match the canonical `AI_CONTEXT.md` file and strengthen the identity of the convention.
 
 ## Current Problems
 
-The convention is usable manually, but the optional tooling ecosystem described in the README does not exist yet.
+The convention and initializer are usable, but the optional tooling ecosystem is intentionally still small.
 
 Notable unfinished areas include:
 
-- no initializer CLI such as `ai-context init`;
-- no validator/linter for malformed or oversized context files;
-- no stale-context detection;
+- the `ai-context` package is not yet published to PyPI or another package registry;
+- v0.1 treats existing managed files as conflicts and aborts unless `--force`; it does not yet support surgical/idempotent operations such as adding one adapter while preserving an already-populated `docs/AI_CONTEXT.md`;
+- no `ai-context check` validator/linter;
+- no stale-context or context-size detection;
 - no secret-scanning integration specific to shared-context files;
-- no automated GitHub Action for convention checks;
 - no machine-readable optional metadata format;
-- no collected real-world adoption examples beyond the projects that originally motivated the pattern;
-- no automated tests because the repository currently consists primarily of Markdown conventions, templates, and examples.
+- no collected real-world adoption examples beyond the projects that originally motivated the pattern.
 
 The project should avoid adding tooling that makes the Markdown convention dependent on that tooling.
 
@@ -76,7 +89,11 @@ The project should avoid adding tooling that makes the Markdown convention depen
 - Added an MIT License.
 - Initialized AI_CONTEXT inside its own repository by adding live project context, project-level agent instructions, an ADR, and a session handoff.
 - Added a README section explaining that repository-native memory is also version-controlled, reviewable, attributable, revertible, and historically reconstructable through Git.
-- Demonstrated the intended contribution workflow for that documentation change by using a feature branch, separate commits, live-context maintenance, a session handoff, and a pull request rather than editing `main` directly.
+- Demonstrated the intended contribution workflow through feature branches, separate commits, live-context maintenance, session handoffs, pull-request review, and merge.
+- Added ADR 0002 selecting Python 3.10+ with no runtime dependencies for the initial optional CLI.
+- Implemented `ai-context init` v0.1 with optional Codex, Claude, Gemini, and generic adapters.
+- Added unit tests, packaged-resource synchronization checks, and cross-platform GitHub Actions CI.
+- Added README installation and usage documentation for CLI v0.1.
 
 ## Important Decisions
 
@@ -86,27 +103,31 @@ The project should avoid adding tooling that makes the Markdown convention depen
 - Tool-specific instruction files are thin adapters into a shared context layer rather than separate competing memories.
 - This repository dogfoods AI_CONTEXT while keeping its reusable templates distinct from its own live context. See [`docs/decisions/0001-dogfood-ai-context.md`](decisions/0001-dogfood-ai-context.md).
 - Git history is treated as part of the value of the repository-native design: memory changes should remain inspectable and reviewable alongside the project changes they describe.
+- CLI v0.1 is Python 3.10+, standard-library-only at runtime, model-independent, and optional. See [`docs/decisions/0002-python-cli-v0.1.md`](decisions/0002-python-cli-v0.1.md).
+- The CLI scaffolds the memory system; AI agents and humans create and maintain the memory.
 
 ## Active Work
 
-The immediate work is to continue dogfooding the live context while evolving the project, using normal Git branches and pull requests for substantial changes so the repository itself remains a practical demonstration of the convention.
+The immediate work is to dogfood `ai-context init` in real repositories and use observed friction to refine the initializer before expanding the tooling surface.
+
+Substantial changes should continue through normal Git branches and pull requests so the repository itself remains a practical demonstration of version-controlled shared memory.
 
 ## Next Steps
 
 Likely next work includes:
 
-1. Use the live context during real AI_CONTEXT development and refine the convention based on observed friction.
-2. Decide whether to build a small initializer CLI and what language/package format should host it.
-3. Design a lightweight `ai-context check` validator without making tooling mandatory.
-4. Consider optional stale-context and size-budget checks.
-5. Add CI/GitHub Action examples once there is something meaningful to validate.
-6. Collect real-world examples and compatibility notes from additional coding agents and IDEs.
-7. Keep README, convention, adoption guide, templates, examples, and live context synchronized as the format evolves.
+1. Dogfood `ai-context init` in multiple existing repositories and record usability problems.
+2. Improve idempotent/surgical initialization so an existing AI_CONTEXT project can safely add or refresh individual adapters without overwriting its live context.
+3. Decide when and how to publish/install signed versioned releases beyond direct GitHub installation.
+4. Design a lightweight `ai-context check` validator without making tooling mandatory.
+5. Add stale-context and context-size checks after the validator contract is clear.
+6. Consider secret-scanning integration for shared-context files.
+7. Collect real-world examples and compatibility notes from additional coding agents and IDEs.
 8. Consider whether future tooling should expose or summarize context history/diffs without duplicating Git's native capabilities.
 
 ## Important Files
 
-- `README.md` — primary public explanation of AI_CONTEXT.
+- `README.md` — primary public explanation and CLI usage documentation.
 - `AGENTS.md` — live repository-specific agent instructions.
 - `docs/AI_CONTEXT.md` — live current-state memory for this repository.
 - `docs/CONVENTION.md` — convention definition.
@@ -117,15 +138,25 @@ Likely next work includes:
 - `templates/ADR.md` — reusable decision-record template.
 - `templates/SESSION.md` — reusable session-handoff template.
 - `examples/` — agent-specific and generic integration examples.
+- `src/ai_context/cli.py` — CLI parsing, Git-root detection, safety checks, and initialization behavior.
+- `src/ai_context/resources/` — bundled canonical resources used by the installed CLI.
+- `tests/test_cli.py` — initializer behavior tests.
+- `tests/test_resources.py` — bundled-resource synchronization test.
+- `.github/workflows/tests.yml` — Linux/Windows and Python 3.10/3.13 CI matrix.
+- `pyproject.toml` — Python package metadata and console entry point.
 - `assets/ai-context-banner.svg` — repository banner displayed in the README.
 
 ## Verification Notes
 
-On 2026-08-31, the repository structure and canonical templates were inspected directly from the `main` branch before initializing the live context layer. The live files were created using the repository's own template structure and naming conventions.
+On 2026-08-31, CLI v0.1 was validated locally before being committed:
 
-For the version-controlled-memory documentation change, work was performed on the `docs/versioned-memory` feature branch. The README and live project context were updated on that branch before opening pull request #1, demonstrating that memory changes can be reviewed in the same Git workflow as other repository changes.
+- `python -m unittest discover -s tests -v` passed 11 tests;
+- the package installed successfully in editable mode with no runtime dependencies;
+- `ai-context --version` reported `0.1.0`;
+- `ai-context init --agents codex,gemini` created the expected core context structure and adapters in a temporary Git repository;
+- a second initialization attempt exited with code 1 and refused to overwrite the existing managed files.
 
-There is currently no executable test suite. Validation consists of repository inspection, consistency with the documented convention, and review of the branch diff before merge.
+GitHub Actions is configured to repeat package installation, unit tests, and a CLI smoke test on Linux and Windows with Python 3.10 and 3.13 for pull requests and pushes to `main`.
 
 ---
 
