@@ -44,7 +44,9 @@ history. The repository is both a reusable reference and a live example.
 - Initialization is not surgical/idempotent for populated projects. Add Work or
   coordination manually; `--force` replaces current context and selected files.
 - No context validator, stale-context detection, metadata parser, coordination
-  lock, automatic messaging, or dedicated secret-scanning integration.
+  lock, general automatic messaging, or dedicated secret-scanning integration.
+- An opt-in GitHub agent inbox/label hook is proposed in draft form on
+  `feat/agent-inbox-hooks`; end-to-end PR event delivery is untested.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -58,9 +60,11 @@ history. The repository is both a reusable reference and a live example.
 - Added a Work startup/return adapter, opt-in CLI support, packaged resources,
   compatibility/safety tests, and manual adoption guidance for existing projects.
 - Updated thin agent adapters to discover coordination instructions when present.
-- Completed the controlled ChatGPT -> Work -> Codex -> ChatGPT handoff review
-  in [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md), draft PR #4.
-  The receiving acknowledgments and validation are published; merge is pending user approval.
+- Completed the controlled ChatGPT -> Work -> Codex -> ChatGPT trial
+  in [three-agent journal](sessions/2026-10-26-three-agent-roundtrip.md).
+  PR #4 was merged on 2026-10-26 as `e7ef9c530bb04fd5a15c8f2298a19228dd33a7ae`.
+- Proposed the [optional GitHub agent inbox](AGENT_INBOX.md) with an opt-in
+  pull-request label router and experimental ADR 0004.
 - Earlier milestones established dogfooding, Git-versioned memory, and the
   dependency-free Python initializer; see ADRs and prior session journals.
 
@@ -81,20 +85,21 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
-- Three-agent coordination trial: branch `trial/three-agent-roundtrip-2026-10-26`;
-  status `complete` for its controlled handoff and independent review, with
-  [draft PR #4](https://github.com/yoliverasPozo/AI_CONTEXT/pull/4) **unmerged**.
-  Work, Codex and ChatGPT acknowledgments and validation are in the
-  [trial journal](sessions/2026-10-26-three-agent-roundtrip.md).
-  Next action: user separately decides whether to merge PR #4. No deployment
-  is authorized. ADR 0003 remains experimental.
+- Opt-in GitHub agent inbox: `feat/agent-inbox-hooks`, status `review`
+  pending a draft PR, security review, CI and user merge approval. The workflow
+  routes opted-in PR labels; no external Work/Codex event subscriptions are
+  configured yet. [Design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
+  [session](sessions/2026-10-26-agent-inbox-hooks.md).
+- The prior [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md)
+  is complete and merged in PR #4. ADR 0003 remains experimental.
 
 ## Next Steps
 
-1. Decide whether to merge draft PR #4 after the successful controlled handoff;
-   final merge is not included in the trial authorization.
-2. Trial the protocol in a non-sensitive existing project before reconsidering
-   experimental ADR 0003; avoid mandatory metadata without a new decision.
+1. Review/validate the optional GitHub agent inbox and workflow; do not merge
+   the new feature PR without separate approval.
+2. Run a real opt-in event delivery test in AI_CONTEXT (including Work/Codex
+   subscriptions and a ChatGPT watcher), then trial an existing project.
+   Keep ADRs 0003 and 0004 experimental until tested.
 3. Improve surgical/idempotent initialization for existing repositories.
 4. Dogfood initialization, plan package distribution, and consider a lightweight
    validator, stale-context checks, and secret scanning after real use.
