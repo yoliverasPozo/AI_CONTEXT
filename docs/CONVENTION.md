@@ -88,6 +88,19 @@ An adapter SHOULD tell the agent:
 4. how to recover after missing or compressed conversation context;
 5. what information must not be stored there.
 
+## Optional extension: agent coordination
+
+Projects MAY adopt the [shared coordination and handoff protocol](COORDINATION.md)
+when work moves between agents or sessions. It extends existing session records
+with task ownership/status, scope, acknowledgment, revision pointers, validation
+evidence, and a next action. The original context, ADR, and session formats remain
+valid; no migration or new core directory is required. Tool-specific adapters,
+including ChatGPT Work, SHOULD refer to the same shared records. Handoffs describe
+authorized scope but MUST NOT be interpreted as granting new permissions.
+
+The extension's lifecycle and templates are optional; their absence is not a
+convention failure. Human-reviewed Markdown remains sufficient without the CLI.
+
 ## Source-of-truth behavior
 
 AI_Context documentation MUST NOT be treated as infallible.

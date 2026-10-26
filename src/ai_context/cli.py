@@ -21,6 +21,7 @@ ADAPTERS: dict[str, Adapter] = {
     "codex": Adapter("AGENTS.md", "AGENTS.md", "Codex / AGENTS.md-compatible agents"),
     "claude": Adapter("CLAUDE.md", "CLAUDE.md", "Claude Code"),
     "gemini": Adapter("GEMINI.md", "GEMINI.md", "Gemini CLI"),
+    "work": Adapter("CHATGPT_WORK.md", "AI_CONTEXT_WORK.md", "ChatGPT Work startup prompt"),
     "generic": Adapter(
         "GENERIC_PROMPT.md",
         "AI_CONTEXT_PROMPT.md",
@@ -31,6 +32,10 @@ ADAPTERS: dict[str, Adapter] = {
 CORE_RESOURCE = "AI_CONTEXT.md"
 CORE_DESTINATION = "docs/AI_CONTEXT.md"
 DIRECTORIES = ("docs/decisions", "docs/sessions")
+COORDINATION_FILES = {
+    "docs/COORDINATION.md": "COORDINATION.md",
+    "docs/HANDOFF_TEMPLATE.md": "HANDOFF.md",
+}
 
 
 class InitError(RuntimeError):
@@ -80,11 +85,15 @@ def _resource_text(name: str) -> str:
     return resources.files("ai_context.resources").joinpath(name).read_text(encoding="utf-8")
 
 
-def _managed_files(agent_names: Iterable[str]) -> dict[str, str]:
+def _managed_files(agent_names: Iterable[str], *, coordination: bool = False) -> dict[str, str]:
     files = {CORE_DESTINATION: CORE_RESOURCE}
     for name in agent_names:
         adapter = ADAPTERS[name]
         files[adapter.destination] = adapter.resource
+        if name == "work":
+            coordination = True
+    if coordination:
+        files.update(COORDINATION_FILES)
     return files
 
 
@@ -94,9 +103,10 @@ def initialize(
     *,
     force: bool = False,
     dry_run: bool = False,
+    coordination: bool = False,
 ) -> tuple[list[str], list[str]]:
     """Initialize AI_CONTEXT and return (created, overwritten) relative paths."""
-    managed = _managed_files(agent_names)
+    managed = _managed_files(agent_names, coordination=coordination)
     conflicts = [relative for relative in managed if (repo_root / relative).exists()]
 
     if conflicts and not force:
@@ -143,7 +153,12 @@ def _build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument(
         "--agents",
         metavar="LIST",
-        help="comma-separated adapters: codex,claude,gemini,generic; use none for no adapters",
+        help="comma-separated adapters: codex,claude,gemini,generic,work; use none for no adapters",
+    )
+    init_parser.add_argument(
+        "--coordination",
+        action="store_true",
+        help="include shared coordination instructions and a handoff template (implied by work)",
     )
     init_parser.add_argument(
         "--force",
@@ -176,6 +191,7 @@ def _run_init(args: argparse.Namespace) -> int:
         agent_names,
         force=args.force,
         dry_run=args.dry_run,
+        coordination=args.coordination,
     )
 
     prefix = "Would initialize" if args.dry_run else "AI_CONTEXT initialized"
@@ -203,6 +219,8 @@ def _run_init(args: argparse.Namespace) -> int:
             "  Ask your AI agent to inspect the repository and populate docs/AI_CONTEXT.md,\n"
             "  then maintain it together with decisions and session handoffs as the project evolves."
         )
+        if "work" in agent_names:
+            print("  Paste AI_CONTEXT_WORK.md into the Work session; automatic loading is not assumed.")
     return 0
 
 

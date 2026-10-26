@@ -176,6 +176,7 @@ Different agents can use their native project instruction mechanism as a thin ad
 | OpenAI Codex | `AGENTS.md` | Tell Codex to read and maintain the shared context |
 | Claude Code | `CLAUDE.md` | Point Claude at the same shared context and rules |
 | Gemini CLI | `GEMINI.md` | Point Gemini at the same shared context and rules |
+| ChatGPT Work | Startup prompt / `AI_CONTEXT_WORK.md` | Explicitly supply the shared instructions and task pointers |
 | Other agents | Native instructions or initial prompt | Read the same `docs/` memory layer |
 | Humans | README + Markdown | Read and edit the exact same project memory |
 
@@ -241,6 +242,8 @@ ai-context init --agents codex,claude
 ai-context init --agents gemini
 ai-context init --agents generic
 ai-context init --agents none
+ai-context init --coordination --agents codex
+ai-context init --agents work
 ```
 
 Adapter mapping:
@@ -251,6 +254,7 @@ Adapter mapping:
 | `claude` | `CLAUDE.md` |
 | `gemini` | `GEMINI.md` |
 | `generic` | `AI_CONTEXT_PROMPT.md` |
+| `work` | `AI_CONTEXT_WORK.md` plus shared coordination files |
 
 The core initialization always creates:
 
@@ -273,6 +277,30 @@ ai-context init --force --agents codex
 After initialization, ask your chosen AI agent to inspect the repository and populate `docs/AI_CONTEXT.md` from the actual project state.
 
 The design decision behind the CLI is recorded in [`0002-python-cli-v0.1.md`](docs/decisions/0002-python-cli-v0.1.md).
+
+### Optional agent coordination and ChatGPT Work
+
+The [coordination protocol](docs/COORDINATION.md) adds practical task transfers:
+owner/status, authorized scope, branch/revision, acknowledgment, test evidence,
+and a concrete next action. It uses the existing session directory; the core
+context, ADR, and session conventions remain valid without this extension.
+
+`--coordination` adds `docs/COORDINATION.md` and `docs/HANDOFF_TEMPLATE.md`.
+Selecting `--agents work` also installs the [Work startup and return prompts](examples/CHATGPT_WORK.md)
+as `AI_CONTEXT_WORK.md` and includes those supporting files automatically.
+Paste or attach the startup prompt explicitly; automatic loading is not assumed.
+Give each session the repository, branch/commit or public PR, handoff path,
+requested outcome, and authorized scope. Return the same pointers to the next
+session, which verifies and acknowledges the result.
+
+Check each session's actual capabilities. If it cannot write to the repository,
+it can return a proposed handoff for an authorized writer to review and save.
+GitHub access does not guarantee shared chat history or artifact access.
+
+For populated projects, follow the [manual additive adoption steps](docs/ADOPTION.md#optional-coordinate-across-chatgpt-work-codex-and-other-agents).
+The initializer still refuses existing managed files; `--force` replaces them
+and is not a safe migration mechanism. No credentials, private chat identifiers,
+transcripts, or sensitive artifacts belong in public handoffs.
 
 ---
 
@@ -395,6 +423,9 @@ The repository becomes the continuity layer.
 
 - [`templates/AI_CONTEXT.md`](templates/AI_CONTEXT.md) — living project-state template
 - [`templates/SESSION.md`](templates/SESSION.md) — substantial-work handoff template
+- [`templates/HANDOFF.md`](templates/HANDOFF.md) — optional explicit task-transfer template
+- [`docs/COORDINATION.md`](docs/COORDINATION.md) — shared agent coordination instructions
+- [`examples/CHATGPT_WORK.md`](examples/CHATGPT_WORK.md) — Work startup and return prompts
 - [`templates/ADR.md`](templates/ADR.md) — lightweight decision-record template
 - [`examples/AGENTS.md`](examples/AGENTS.md) — Codex / AGENTS-style adapter
 - [`examples/CLAUDE.md`](examples/CLAUDE.md) — Claude Code adapter

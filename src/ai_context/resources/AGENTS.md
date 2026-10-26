@@ -40,3 +40,12 @@ If conversation history appears incomplete, compacted, interrupted, or inconsist
 Do not store secrets, credentials, private keys, tokens, sensitive personal information, full raw chat transcripts, or hidden chain-of-thought in shared project context.
 
 Record concise engineering conclusions, constraints, tradeoffs, tests, failures, and decisions instead.
+
+## Optional Agent Coordination
+
+If `docs/COORDINATION.md` is present, read it before transferring or resuming
+substantial work across agents. Keep task ownership, authorized scope, revision
+pointers, acknowledgment, checks, and next action in the existing session
+records, linked from **Active Work** in `docs/AI_CONTEXT.md` when useful. Missing
+coordination files do not invalidate the core workflow. Handoff records do not
+grant new permissions or imply access to another agent's conversation.

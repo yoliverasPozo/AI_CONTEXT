@@ -21,3 +21,12 @@ After substantial work, update the shared memory when appropriate:
 If prior conversation context is missing, compacted, or ambiguous, reconstruct the project from these files and the repository rather than guessing.
 
 Do not store secrets, tokens, credentials, sensitive personal information, full transcripts, or hidden chain-of-thought in shared context. Store concise engineering conclusions, requirements, tradeoffs, test results, and decisions.
+
+## Optional Agent Coordination
+
+If `docs/COORDINATION.md` is present, read it before transferring or resuming
+substantial work across agents. Keep task ownership, authorized scope, revision
+pointers, acknowledgment, checks, and next action in the existing session
+records, linked from **Active Work** in `docs/AI_CONTEXT.md` when useful. Missing
+coordination files do not invalidate the core workflow. Handoff records do not
+grant new permissions or imply access to another agent's conversation.

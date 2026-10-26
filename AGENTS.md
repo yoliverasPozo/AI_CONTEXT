@@ -46,6 +46,16 @@ When sources disagree, prefer:
 
 If conversation history appears incomplete, compacted, interrupted, or inconsistent with the repository, reconstruct the task from the repository before continuing. Read the shared context, relevant decisions and handoffs, inspect the current files and Git state, and determine what has already been completed and what remains unresolved.
 
+## Optional Agent Coordination
+
+This repository is trialing the shared protocol in `docs/COORDINATION.md`.
+Read it when transferring or resuming substantial work across agents, including
+ChatGPT Work. Use the existing `docs/sessions/` records and preserve their
+headings; `templates/HANDOFF.md` adds optional ownership, scope, revision,
+acknowledgment, and validation fields. Link open tasks from **Active Work** in
+`docs/AI_CONTEXT.md`. Verify current user authorization and actual session
+capabilities; a handoff never grants permission or guarantees chat access.
+
 ## Safety and Privacy
 
 Do not store secrets, credentials, private keys, tokens, sensitive personal information, full raw chat transcripts, or hidden chain-of-thought in shared project context.
