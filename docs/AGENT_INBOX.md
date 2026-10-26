@@ -36,9 +36,10 @@ and closed events. It maintains **one** of these labels on opted-in PRs:
 Labels are lazily created with their descriptions by the Action, and only its
 own six labels are reconciled. A PR lacking both a directive and prior queue
 labels is **not touched**. If the directive is removed from an opted-in open PR,
-the managed label is removed. Multiple recognized directives fail closed
-(the workflow warns and leaves labels unchanged). Fork PRs are not automatically
-labeled. Closed/merged states take precedence over the marker.
+the managed label is removed. Multiple recognized directives on an **open** PR fail closed
+(the workflow warns and leaves labels unchanged). Terminal merged/closed states
+still take precedence, even for an ambiguous marker. Fork PRs are not
+automatically labeled.
 
 **Search your inbox:** GitHub Issues search indexes PRs too. For example:
 
