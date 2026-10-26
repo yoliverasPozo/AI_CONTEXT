@@ -60,11 +60,15 @@ Codex session by itself.
 **ChatGPT Work:** When available on the user's account/workspace, create an
 *event-triggered Work task* for GitHub PR activity in the authorized repository.
 Give the task a condition to act only on PRs assigned to its intended role
-(e.g. label `ai-next:work`). Its prompt should fetch the latest PR, read
+(e.g. label `ai-next:work`) **AND** whose published handoff shows
+`Status: ready` and `Next owner: ChatGPT Work`. Do not execute again on
+`active`, `review` or already-acknowledged work merely because a new commit
+or edit produces another PR event. Its prompt should fetch the latest PR, read
 `AGENTS.md`, `docs/AI_CONTEXT.md`, `docs/COORDINATION.md` and the specific
 session journal; verify status, permissions and SHA; acknowledge *on the
-branch*; perform only authorized scope; push evidence; update the PR marker
-for the next role. Keep approval gates for merges, deployments and production.
+branch* before doing substantive work; perform only authorized scope; push
+evidence; update the PR marker for the next role. Keep approval gates for
+merges, deployments and production.
 Because available event types and event delivery can vary, verify a genuine
 PR-label/edited/merged event is delivered before relying on the subscription.
 
