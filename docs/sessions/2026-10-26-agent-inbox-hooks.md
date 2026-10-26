@@ -15,7 +15,7 @@ Base branch: main
 Work branch: feat/agent-inbox-hooks
 Last inspected commit: e7ef9c530bb04fd5a15c8f2298a19228dd33a7ae (squash merge of PR #4)
 Last tested commit: not run (GitHub CI to be evaluated at latest PR head)
-Pull request: draft PR to be opened (not merged)
+Pull request: https://github.com/yoliverasPozo/AI_CONTEXT/pull/5 (draft/open; not merged)
 Continuation of: docs/sessions/2026-10-26-three-agent-roundtrip.md
 
 ### Acknowledgment / transfer history
@@ -73,7 +73,7 @@ event-triggered tasks, Codex review, and ChatGPT monitoring.
 | New feature CI | new feature PR head | pending |
 | Native Work event-triggered setup | user account/workspace | not configured in this branch |
 | Codex automatic reviews | repo settings | not configured in this branch |
-| ChatGPT status monitoring | separate event/conditional task | subject to user account task availability |
+| ChatGPT status monitoring | hourly conditional GitHub watch | enabled (no matching event delivery verified yet) |
 
 ## Problems Encountered
 
@@ -84,8 +84,10 @@ event-triggered tasks, Codex review, and ChatGPT monitoring.
 
 ## Current Result
 
-Opt-in GitHub inbox prototype proposed for draft PR; no downstream agent
-subscription has been installed. The feature must not be called fully
+Opt-in GitHub inbox prototype published in draft PR #5; no downstream agent
+subscription has been installed. ChatGPT's separate hourly condition-watch
+for this repository has been created but delivery and deduplication have not
+been demonstrated by a live matching PR event. The feature must not be called fully
 automated until event delivery and account-level integrations are verified.
 
 ## Next Steps
