@@ -56,6 +56,15 @@ acknowledgment, and validation fields. Link open tasks from **Active Work** in
 `docs/AI_CONTEXT.md`. Verify current user authorization and actual session
 capabilities; a handoff never grants permission or guarantees chat access.
 
+## Optional GitHub Handoff Inbox
+
+When a PR opts into GitHub routing using a marker such as
+`<!-- ai-context-next: codex -->`, consult `docs/AGENT_INBOX.md`
+and read the actual session handoff before acting. Labels are advisory,
+not authorization or evidence of completion. Keep merges/deployments gated
+by the user's current approval. Do not confuse event notifications with
+a published receiving acknowledgment.
+
 ## Safety and Privacy
 
 Do not store secrets, credentials, private keys, tokens, sensitive personal information, full raw chat transcripts, or hidden chain-of-thought in shared project context.

@@ -134,6 +134,17 @@ This is a repository workflow, not a guarantee of product features. Native
 chat/environment transfer is a separate capability; consult current product
 documentation and available tools if using it.
 
+## Optional GitHub agent inbox
+
+For GitHub-hosted projects, an opt-in PR-body marker and an event-driven label
+router can make incoming handoffs searchable by agent role. The **reference**
+repository documents this separately in `docs/AGENT_INBOX.md`; that optional
+file and its GitHub workflow are not installed by the core initializer.
+The shared session journal still determines task status, authorization and
+acknowledgment; GitHub labels never grant authority. Work event-triggered
+tasks, Codex reviews, and ChatGPT monitoring must be configured separately.
+No automatic cross-chat visibility or PR merge is implied.
+
 ## Public repository hygiene
 
 Review **every file, artifact, commit message, PR body, and link** before pushing.

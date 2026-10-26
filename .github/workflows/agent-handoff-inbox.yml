@@ -1,0 +1,107 @@
+# Opt-in GitHub PR label router for AI_CONTEXT coordination.
+# Runs trusted default-branch workflow code only; never checks out or executes PR content.
+name: AI_CONTEXT handoff inbox
+
+on:
+  pull_request_target:
+    types: [opened, reopened, edited, synchronize, closed]
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  route:
+    # Avoid mutating public fork PRs from untrusted actors.
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Synchronize opt-in agent inbox label
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            const names = {
+              work: 'ai-next:work',
+              codex: 'ai-next:codex',
+              chatgpt: 'ai-next:chatgpt',
+              blocked: 'ai-next:blocked',
+              done: 'ai-next:done',
+              closed: 'ai-next:closed',
+            };
+            const descriptions = {
+              work: 'AI_CONTEXT handoff ready for a Work task',
+              codex: 'AI_CONTEXT handoff ready for Codex',
+              chatgpt: 'AI_CONTEXT handoff ready for ChatGPT review',
+              blocked: 'AI_CONTEXT handoff blocked (consult session journal)',
+              done: 'AI_CONTEXT PR was merged',
+              closed: 'AI_CONTEXT PR was closed without merge',
+            };
+            const colors = {
+              work: 'BFD4F2', codex: 'D4C8EE', chatgpt: 'C6E6CD',
+              blocked: 'F5D6B8', done: 'B8DDBF', closed: 'D5D5D5',
+            };
+
+            // Only a single exact, narrowly parsed directive is accepted.
+            // The PR body is untrusted data: do not eval, execute, or interpolate it.
+            const directives = [...String(pr.body || '').matchAll(
+              /<!--\s*ai-context-next:\s*(work|codex|chatgpt|blocked)\s*-->/gi
+            )];
+            const managedLabels = (pr.labels || [])
+              .map(label => label.name)
+              .filter(name => Object.values(names).includes(name));
+
+            // Do nothing to ordinary PRs that never opted in.
+            if (directives.length === 0 && managedLabels.length === 0) return;
+            // Ambiguous active handoff: fail closed. Terminal GitHub state
+            // still wins, so a merged PR cannot remain indefinitely queued.
+            if (directives.length > 1 && pr.state !== 'closed') {
+              core.warning('Multiple handoff directives; leaving labels unchanged.');
+              return;
+            }
+            const selected = directives.length === 1
+              ? directives[0][1].toLowerCase() : null;
+
+            const destination = pr.merged ? 'done'
+              : pr.state === 'closed' ? 'closed'
+              : selected;
+            const desiredName = destination ? names[destination] : null;
+
+            if (desiredName && !managedLabels.includes(desiredName)) {
+              try {
+                await github.rest.issues.getLabel({ owner, repo, name: desiredName });
+              } catch (error) {
+                if (error.status !== 404) throw error;
+                try {
+                  await github.rest.issues.createLabel({
+                    owner, repo,
+                    name: desiredName,
+                    color: colors[destination],
+                    description: descriptions[destination],
+                  });
+                } catch (race) {
+                  // A simultaneous router run may have just created this label.
+                  if (race.status !== 422) throw race;
+                  await github.rest.issues.getLabel({
+                    owner, repo, name: desiredName,
+                  });
+                }
+              }
+            }
+
+            // Reconcile only the six AI_CONTEXT queue labels, never other labels.
+            for (const label of managedLabels) {
+              if (label !== desiredName) {
+                await github.rest.issues.removeLabel({
+                  owner, repo, issue_number: pr.number, name: label,
+                });
+              }
+            }
+            if (desiredName && !managedLabels.includes(desiredName)) {
+              await github.rest.issues.addLabels({
+                owner, repo, issue_number: pr.number, labels: [desiredName],
+              });
+            }
+            core.info(`PR #${pr.number}: ${desiredName || 'no handoff label'}`);

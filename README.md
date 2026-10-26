@@ -302,6 +302,21 @@ The initializer still refuses existing managed files; `--force` replaces them
 and is not a safe migration mechanism. No credentials, private chat identifiers,
 transcripts, or sensitive artifacts belong in public handoffs.
 
+### GitHub-native agent inbox (experimental)
+
+The optional [agent inbox](docs/AGENT_INBOX.md) makes substantial handoffs
+discoverable in GitHub. Place one PR-description marker such as
+`<!-- ai-context-next: work -->`, `codex`, or `chatgpt`.
+After its [GitHub Action](.github/workflows/agent-handoff-inbox.yml) is merged
+to the default branch, the router maintains an `ai-next:*` label on opted-in
+same-repository PRs, including merged/closed status. It does not execute
+agents or merge PRs.
+
+Work's native GitHub event-triggered tasks, Codex automatic PR review, and
+ChatGPT conditional notifications are separate opt-in integrations. Use the
+journal and actual Git revision as authority, not the queue label. The CLI
+does not install this GitHub-only extension and existing projects stay valid.
+
 ---
 
 ## Suggested workflow
@@ -425,6 +440,7 @@ The repository becomes the continuity layer.
 - [`templates/SESSION.md`](templates/SESSION.md) — substantial-work handoff template
 - [`templates/HANDOFF.md`](templates/HANDOFF.md) — optional explicit task-transfer template
 - [`docs/COORDINATION.md`](docs/COORDINATION.md) — shared agent coordination instructions
+- [`docs/AGENT_INBOX.md`](docs/AGENT_INBOX.md) — optional GitHub PR queue and event hooks
 - [`examples/CHATGPT_WORK.md`](examples/CHATGPT_WORK.md) — Work startup and return prompts
 - [`templates/ADR.md`](templates/ADR.md) — lightweight decision-record template
 - [`examples/AGENTS.md`](examples/AGENTS.md) — Codex / AGENTS-style adapter
