@@ -27,7 +27,9 @@ history. The repository is both a reusable reference and a live example.
 - CLI v0.1 initializes the core context structure with optional Codex, Claude,
   Gemini, and generic adapters; detects repository roots and supports dry-run
   and explicit force overwrite. Existing managed files abort before writes.
-- On the coordination feature branch, `--coordination` installs shared
+- Merged into `main` through [PR #3](https://github.com/yoliverasPozo/AI_CONTEXT/pull/3)
+  on 2026-10-26 as `fb092b6ba13d10a977a43d194f6945fce6b1908d`:
+  `--coordination` installs shared
   instructions and `docs/HANDOFF_TEMPLATE.md`; `--agents work` also installs
   `AI_CONTEXT_WORK.md` and includes those supporting files. Existing default
   output paths and existing adapter selections retain their behavior.
@@ -43,17 +45,21 @@ history. The repository is both a reusable reference and a live example.
   coordination manually; `--force` replaces current context and selected files.
 - No context validator, stale-context detection, metadata parser, coordination
   lock, automatic messaging, or dedicated secret-scanning integration.
-- Work capabilities vary per session; no live Work round-trip has been tested.
+- Work capabilities vary per session; the three-agent trial is in progress,
+  with independent Codex validation and final ChatGPT review still pending.
   The protocol does not guarantee automatic adapter discovery or chat access.
-- Coordination v1 is experimental and awaits review and real-project use.
+- Coordination v1 remains experimental under ADR 0003 after PR #3's merge;
+  the full round-trip and broader real-project use remain unvalidated.
 
 ## Recent Changes
 
-- Added an optional coordination protocol and explicit-transfer template while
+- Merged PR #3's optional coordination protocol and explicit-transfer template while
   preserving the original context, ADR, and session structures.
 - Added a Work startup/return adapter, opt-in CLI support, packaged resources,
   compatibility/safety tests, and manual adoption guidance for existing projects.
 - Updated thin agent adapters to discover coordination instructions when present.
+- Corrected stale pre-merge status and recorded the Work-stage handoff in the
+  [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md), draft PR #4.
 - Earlier milestones established dogfooding, Git-versioned memory, and the
   dependency-free Python initializer; see ADRs and prior session journals.
 
@@ -74,18 +80,20 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
-- Coordination v1 / Work integration: Codex implementer; branch
-  `feat/agent-coordination-work`; status `review` in
-  [draft PR #3](https://github.com/yoliverasPozo/AI_CONTEXT/pull/3), with no merge
-  authorized. Next owner: user / PR reviewer (acknowledgment pending).
-  Handoff: [2026-10-26 session](sessions/2026-10-26-agent-coordination-work.md).
-  Inspect branch/PR state before continuing; this branch summary is not proof
-  of merge or current ownership.
+- Three-agent coordination trial: branch `trial/three-agent-roundtrip-2026-10-26`;
+  status `ready` for `Codex reviewer` in
+  [draft PR #4](https://github.com/yoliverasPozo/AI_CONTEXT/pull/4).
+  ChatGPT Work implementer has published its receiving acknowledgment and
+  context correction; the outgoing owner remains accountable until Codex
+  acknowledges. Handoff: [trial journal](sessions/2026-10-26-three-agent-roundtrip.md).
+  Next action: Codex independently inspects the latest revision, publishes its
+  acknowledgment, and validates the changes. Final ChatGPT review is pending;
+  the full trial is incomplete and merge/deployment are not authorized.
 
 ## Next Steps
 
-1. Review the coordination draft PR and trial a sanitized transfer into and
-   back from an actual Work session with its available tools.
+1. Complete Codex's independent validation and the final ChatGPT review in
+   draft PR #4, preserving distinct acknowledgments and revision-specific evidence.
 2. Use that feedback to revise the protocol and decide whether ADR 0003 can
    become accepted; do not add mandatory metadata without a new decision.
 3. Improve surgical/idempotent initialization for existing repositories.
@@ -107,10 +115,15 @@ history. The repository is both a reusable reference and a live example.
 
 ## Verification Notes
 
-On 2026-10-26, the clean baseline passed 11 tests on Windows/Python 3.13.5.
+Historical PR #3 evidence in the
+[implementation journal](sessions/2026-10-26-agent-coordination-work.md):
+on 2026-10-26, the clean baseline passed 11 tests on Windows/Python 3.13.5.
 The expanded suite passed 18 tests after the new tests exposed the absent flag,
 adapter, and packaged resources. A built wheel installed in an isolated
 environment passed CLI/output, dry-run, and conflict checks for core, existing
 adapters, coordination, and Work selections. Relative Markdown links/anchors,
 whitespace, and public-data patterns were checked. Review and CI evidence
-belongs in the linked session handoff. No live Work trial is claimed.
+belongs in that implementation journal. Those results do not validate PR #4.
+Work's documentation checks and receiving acknowledgment are recorded in the
+[trial journal](sessions/2026-10-26-three-agent-roundtrip.md); independent Codex
+validation and final ChatGPT review have not occurred.
