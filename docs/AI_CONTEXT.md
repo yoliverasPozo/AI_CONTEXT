@@ -75,8 +75,10 @@ history. The repository is both a reusable reference and a live example.
 ## Active Work
 
 - Coordination v1 / Work integration: Codex implementer; branch
-  `feat/agent-coordination-work`; preparing a draft PR for review, with no merge
-  authorized. Handoff: [2026-10-26 session](sessions/2026-10-26-agent-coordination-work.md).
+  `feat/agent-coordination-work`; status `review` in
+  [draft PR #3](https://github.com/yoliverasPozo/AI_CONTEXT/pull/3), with no merge
+  authorized. Next owner: user / PR reviewer (acknowledgment pending).
+  Handoff: [2026-10-26 session](sessions/2026-10-26-agent-coordination-work.md).
   Inspect branch/PR state before continuing; this branch summary is not proof
   of merge or current ownership.
 
