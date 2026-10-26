@@ -85,8 +85,9 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
-- Opt-in GitHub agent inbox: `feat/agent-inbox-hooks`, status `review`
-  pending a draft PR, security review, CI and user merge approval. The workflow
+- Opt-in GitHub agent inbox: `feat/agent-inbox-hooks`, status `review` in
+  [draft PR #5](https://github.com/yoliverasPozo/AI_CONTEXT/pull/5), pending
+  workflow security review, CI and separate user merge approval. The workflow
   routes opted-in PR labels; no external Work/Codex event subscriptions are
   configured yet. [Design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
   [session](sessions/2026-10-26-agent-inbox-hooks.md).
