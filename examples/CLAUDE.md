@@ -21,3 +21,12 @@ After substantial work:
 If conversation context is missing or compressed, recover from the repository instead of guessing or repeating completed work.
 
 Do not place secrets, credentials, sensitive personal data, raw chat transcripts, or hidden chain-of-thought in shared context. Preserve concise engineering conclusions, requirements, tradeoffs, validation results, failures, and decisions.
+
+## Optional Agent Coordination
+
+If `docs/COORDINATION.md` is present, read it before transferring or resuming
+substantial work across agents. Keep task ownership, authorized scope, revision
+pointers, acknowledgment, checks, and next action in the existing session
+records, linked from **Active Work** in `docs/AI_CONTEXT.md` when useful. Missing
+coordination files do not invalidate the core workflow. Handoff records do not
+grant new permissions or imply access to another agent's conversation.

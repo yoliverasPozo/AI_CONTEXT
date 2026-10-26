@@ -14,6 +14,9 @@ class ResourceSyncTests(unittest.TestCase):
             "CLAUDE.md": repo_root / "examples" / "CLAUDE.md",
             "GEMINI.md": repo_root / "examples" / "GEMINI.md",
             "GENERIC_PROMPT.md": repo_root / "examples" / "GENERIC_PROMPT.md",
+            "CHATGPT_WORK.md": repo_root / "examples" / "CHATGPT_WORK.md",
+            "COORDINATION.md": repo_root / "docs" / "COORDINATION.md",
+            "HANDOFF.md": repo_root / "templates" / "HANDOFF.md",
         }
 
         for resource_name, canonical_path in mappings.items():

@@ -159,6 +159,41 @@ Add tooling only when a real problem appears, such as:
 
 The goal is durable continuity, not documentation bureaucracy.
 
+## Optional: coordinate across ChatGPT, Work, Codex, and other agents
+
+Existing projects need no migration. For explicit transfers, adopt the
+[shared protocol](COORDINATION.md) while retaining your existing instructions,
+context headings, ADR numbering, and session naming.
+
+1. Copy `docs/COORDINATION.md` from this repository to the same path in your
+   project. Copy `templates/HANDOFF.md` to `docs/HANDOFF_TEMPLATE.md` if useful.
+2. Add a short conditional instruction to each existing agent adapter: read
+   `docs/COORDINATION.md` when present before transferring or resuming work.
+   Edit existing adapters; do not replace their project-specific rules.
+3. For Work, copy `examples/CHATGPT_WORK.md` to `AI_CONTEXT_WORK.md`. Explicitly
+   paste/attach its startup prompt to the Work task when needed. Supply the
+   repository, branch/commit or public PR, task handoff path, goal, and scope.
+4. Use an extended session record only for substantial work needing a transfer.
+   Link it from **Active Work** in `docs/AI_CONTEXT.md` with status and owner.
+   Have the receiver verify the revision and acknowledge the transfer.
+5. Publish public-safe results to the authorized branch/PR, then give the next
+   session the revision and handoff path. If Work cannot write, review and save
+   its proposed handoff through an authorized writer first. Mark unpublished
+   work explicitly; access to GitHub does not imply access to another chat.
+
+For a **fresh** project, the optional CLI can install these supporting files:
+
+```bash
+ai-context init --coordination --agents codex
+ai-context init --agents work
+```
+
+Selecting `work` includes coordination instructions and the handoff template.
+Other existing selections remain unchanged unless `--coordination` is supplied.
+The current initializer still refuses existing managed files; **do not use
+`--force` to add Work to a populated project** unless replacing its current
+context is intentional. Use the manual additive steps above instead.
+
 ## Suggested rollout for an existing repository
 
 1. Copy the three templates.

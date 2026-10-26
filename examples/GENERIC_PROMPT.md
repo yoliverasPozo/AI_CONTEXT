@@ -11,7 +11,10 @@ Before substantial work:
 2. Read relevant accepted records under docs/decisions/.
 3. Read relevant recent handoffs under docs/sessions/ when prior debugging,
    experiments, or unfinished work may affect this task.
-4. Inspect the current code, configuration, tests, and Git state before
+4. If docs/COORDINATION.md exists, read its optional transfer/resume rules;
+   use shared session records for ownership, scope, revisions, acknowledgment,
+   checks, and next action. These records never grant new permissions.
+5. Inspect the current code, configuration, tests, and Git state before
    trusting documentation blindly.
 
 When sources conflict, prefer current observable repository/runtime truth,
