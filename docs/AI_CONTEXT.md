@@ -46,7 +46,7 @@ history. The repository is both a reusable reference and a live example.
 - No context validator, stale-context detection, metadata parser, coordination
   lock, automatic messaging, or dedicated secret-scanning integration.
 - Work capabilities vary per session; the three-agent trial is in progress,
-  with independent Codex validation and final ChatGPT review still pending.
+  with Codex's independent validation recorded and final ChatGPT review pending.
   The protocol does not guarantee automatic adapter discovery or chat access.
 - Coordination v1 remains experimental under ADR 0003 after PR #3's merge;
   the full round-trip and broader real-project use remain unvalidated.
@@ -81,18 +81,18 @@ history. The repository is both a reusable reference and a live example.
 ## Active Work
 
 - Three-agent coordination trial: branch `trial/three-agent-roundtrip-2026-10-26`;
-  status `ready` for `Codex reviewer` in
+  status `review` for `ChatGPT coordinator` in
   [draft PR #4](https://github.com/yoliverasPozo/AI_CONTEXT/pull/4).
-  ChatGPT Work implementer has published its receiving acknowledgment and
-  context correction; the outgoing owner remains accountable until Codex
-  acknowledges. Handoff: [trial journal](sessions/2026-10-26-three-agent-roundtrip.md).
-  Next action: Codex independently inspects the latest revision, publishes its
-  acknowledgment, and validates the changes. Final ChatGPT review is pending;
+  Work and Codex have published distinct receiving acknowledgments. Codex is
+  the outgoing owner, accountable until ChatGPT acknowledges the review handoff.
+  Handoff: [trial journal](sessions/2026-10-26-three-agent-roundtrip.md).
+  Next action: ChatGPT independently reads the latest PR head, acknowledgments,
+  two-file diff, and revision-specific checks. Final ChatGPT review is pending;
   the full trial is incomplete and merge/deployment are not authorized.
 
 ## Next Steps
 
-1. Complete Codex's independent validation and the final ChatGPT review in
+1. Complete the final ChatGPT review of Codex's independent validation in
    draft PR #4, preserving distinct acknowledgments and revision-specific evidence.
 2. Use that feedback to revise the protocol and decide whether ADR 0003 can
    become accepted; do not add mandatory metadata without a new decision.
@@ -125,5 +125,6 @@ adapters, coordination, and Work selections. Relative Markdown links/anchors,
 whitespace, and public-data patterns were checked. Review and CI evidence
 belongs in that implementation journal. Those results do not validate PR #4.
 Work's documentation checks and receiving acknowledgment are recorded in the
-[trial journal](sessions/2026-10-26-three-agent-roundtrip.md); independent Codex
-validation and final ChatGPT review have not occurred.
+[trial journal](sessions/2026-10-26-three-agent-roundtrip.md), followed by Codex's
+independent tests, link/whitespace checks, and revision-specific Actions evidence.
+Final ChatGPT review remains pending; older CI does not validate a newer head.
