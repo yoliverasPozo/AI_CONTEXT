@@ -49,17 +49,20 @@ jobs:
             const directives = [...String(pr.body || '').matchAll(
               /<!--\s*ai-context-next:\s*(work|codex|chatgpt|blocked)\s*-->/gi
             )];
-            if (directives.length > 1) {
-              core.warning('Multiple handoff directives; leaving labels unchanged.');
-              return;
-            }
-            const selected = directives.length ? directives[0][1].toLowerCase() : null;
             const managedLabels = (pr.labels || [])
               .map(label => label.name)
               .filter(name => Object.values(names).includes(name));
 
             // Do nothing to ordinary PRs that never opted in.
-            if (!selected && managedLabels.length === 0) return;
+            if (directives.length === 0 && managedLabels.length === 0) return;
+            // Ambiguous active handoff: fail closed. Terminal GitHub state
+            // still wins, so a merged PR cannot remain indefinitely queued.
+            if (directives.length > 1 && pr.state !== 'closed') {
+              core.warning('Multiple handoff directives; leaving labels unchanged.');
+              return;
+            }
+            const selected = directives.length === 1
+              ? directives[0][1].toLowerCase() : null;
 
             const destination = pr.merged ? 'done'
               : pr.state === 'closed' ? 'closed'
@@ -71,12 +74,20 @@ jobs:
                 await github.rest.issues.getLabel({ owner, repo, name: desiredName });
               } catch (error) {
                 if (error.status !== 404) throw error;
-                await github.rest.issues.createLabel({
-                  owner, repo,
-                  name: desiredName,
-                  color: colors[destination],
-                  description: descriptions[destination],
-                });
+                try {
+                  await github.rest.issues.createLabel({
+                    owner, repo,
+                    name: desiredName,
+                    color: colors[destination],
+                    description: descriptions[destination],
+                  });
+                } catch (race) {
+                  // A simultaneous router run may have just created this label.
+                  if (race.status !== 422) throw race;
+                  await github.rest.issues.getLabel({
+                    owner, repo, name: desiredName,
+                  });
+                }
               }
             }
 
