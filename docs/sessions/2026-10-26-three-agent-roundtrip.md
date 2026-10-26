@@ -15,7 +15,7 @@ Base branch: main
 Work branch: trial/three-agent-roundtrip-2026-10-26
 Last inspected commit: fb092b6ba13d10a977a43d194f6945fce6b1908d (PR #3 squash merge; branch may have advanced)
 Last tested commit: not run (initial handoff only)
-Pull request: to be opened as a draft against main
+Pull request: https://github.com/yoliverasPozo/AI_CONTEXT/pull/4 (draft, open; do not merge without separate approval)
 Continuation of: docs/sessions/2026-10-26-agent-coordination-work.md
 
 ### Acknowledgment / transfer history
@@ -75,7 +75,7 @@ Demonstrate a verifiable **ChatGPT -> Work -> Codex -> ChatGPT** handoff with on
 
 ## Current Result
 
-Initial ChatGPT handoff is published on the trial branch. No receiving-agent acknowledgment or actual round-trip has occurred yet. This is a staged exercise, not a completed test.
+Initial ChatGPT handoff is published on the trial branch in draft PR #4. No receiving-agent acknowledgment or actual round-trip has occurred yet. This is a staged exercise, not a completed test.
 
 ## Next Steps
 
