@@ -26,6 +26,16 @@ class GitWorktreeDiscoveryTests(unittest.TestCase):
 
             self.assertEqual(find_git_root(nested), root.resolve())
 
+    def test_root_directory_finds_worktree_git_file(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / ".git").write_text(
+                "gitdir: /example/.git/worktrees/sandbox\\n",
+                encoding="utf-8",
+            )
+
+            self.assertEqual(find_git_root(root), root.resolve())
+
     def test_nested_file_finds_worktree_git_file(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
