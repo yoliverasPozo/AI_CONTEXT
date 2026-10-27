@@ -93,6 +93,11 @@ history. The repository is both a reusable reference and a live example.
   neither integration is independently confirmed by this repository record.
   References: [design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
   [session](sessions/2026-10-26-agent-inbox-hooks.md).
+- Automatic Codex review smoke test: [PR #6](https://github.com/yoliverasPozo/AI_CONTEXT/pull/6)
+  is open for a documentation-only change. The operator reports that a Codex
+  cloud environment is now configured. Codex's first response asked for an
+  environment; an actual automatic review remains unverified until a review
+  submission appears after a new push. The test PR is not approved for merge.
 - The prior [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md)
   is complete and merged in PR #4. ADR 0003 remains experimental.
 
