@@ -45,8 +45,8 @@ history. The repository is both a reusable reference and a live example.
   coordination manually; `--force` replaces current context and selected files.
 - No context validator, stale-context detection, metadata parser, coordination
   lock, general automatic messaging, or dedicated secret-scanning integration.
-- An opt-in GitHub agent inbox/label hook is proposed in draft form on
-  `feat/agent-inbox-hooks`; end-to-end PR event delivery is untested.
+- The opt-in GitHub agent inbox/label router was merged in PR #5; live
+  end-to-end event delivery and automatic Codex-review behavior are unverified.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -63,8 +63,9 @@ history. The repository is both a reusable reference and a live example.
 - Completed the controlled ChatGPT -> Work -> Codex -> ChatGPT trial
   in [three-agent journal](sessions/2026-10-26-three-agent-roundtrip.md).
   PR #4 was merged on 2026-10-26 as `e7ef9c530bb04fd5a15c8f2298a19228dd33a7ae`.
-- Proposed the [optional GitHub agent inbox](AGENT_INBOX.md) with an opt-in
-  pull-request label router and experimental ADR 0004.
+- Merged [PR #5](https://github.com/yoliverasPozo/AI_CONTEXT/pull/5),
+  adding the [optional GitHub agent inbox](AGENT_INBOX.md), an opt-in
+  pull-request label router, and experimental ADR 0004.
 - Earlier milestones established dogfooding, Git-versioned memory, and the
   dependency-free Python initializer; see ADRs and prior session journals.
 
@@ -85,22 +86,23 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
-- Opt-in GitHub agent inbox: `feat/agent-inbox-hooks`, status `review` in
-  [draft PR #5](https://github.com/yoliverasPozo/AI_CONTEXT/pull/5), pending
-  workflow security review, CI and separate user merge approval. The workflow
-  routes opted-in PR labels; no external Work/Codex event subscriptions are
-  configured yet. [Design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
+- GitHub agent inbox: [PR #5](https://github.com/yoliverasPozo/AI_CONTEXT/pull/5)
+  is merged; the router is available in `main`. Live event delivery and
+  automatic review behavior still need a controlled test. An operator reports
+  configuring Work's GitHub Handoff Watcher and Codex automatic reviews;
+  neither integration is independently confirmed by this repository record.
+  References: [design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
   [session](sessions/2026-10-26-agent-inbox-hooks.md).
 - The prior [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md)
   is complete and merged in PR #4. ADR 0003 remains experimental.
 
 ## Next Steps
 
-1. Review/validate the optional GitHub agent inbox and workflow; do not merge
-   the new feature PR without separate approval.
-2. Run a real opt-in event delivery test in AI_CONTEXT (including Work/Codex
-   subscriptions and a ChatGPT watcher), then trial an existing project.
-   Keep ADRs 0003 and 0004 experimental until tested.
+1. Use a harmless documentation PR to verify whether Codex automatic review
+   triggers and whether it follows applicable review instructions.
+2. Separately exercise opt-in GitHub inbox routing on a PR with a valid
+   published handoff, then assess Work trigger delivery and ChatGPT monitoring.
+   Keep ADRs 0003 and 0004 experimental until verified.
 3. Improve surgical/idempotent initialization for existing repositories.
 4. Dogfood initialization, plan package distribution, and consider a lightweight
    validator, stale-context checks, and secret scanning after real use.
