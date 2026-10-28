@@ -92,6 +92,12 @@ class InitTests(unittest.TestCase):
     def test_parse_agents_deduplicates_and_preserves_order(self) -> None:
         self.assertEqual(parse_agents("gemini,codex,gemini"), ["gemini", "codex"])
 
+    def test_parse_agents_normalizes_spacing_and_case(self) -> None:
+        self.assertEqual(
+            parse_agents(" CODEX , work , CODEX "),
+            ["codex", "work"],
+        )
+
     def test_coordination_is_opt_in(self) -> None:
         temp, root = self.make_repo()
         self.addCleanup(temp.cleanup)
