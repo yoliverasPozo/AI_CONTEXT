@@ -87,10 +87,23 @@ installed by this reference action.
 **ChatGPT (regular conversation):** This existing chat does not automatically
 resume when a GitHub PR changes. A recurring conditional reminder can check
 `ai-next:chatgpt` and newly merged/closed PRs and send a notification; it
-does not reconstruct or awaken this chat by webhook. A Work event-triggered
-review task is another supported option when available. Either receiver must
+does not establish a webhook endpoint for an arbitrary existing desktop chat.
+Supported scheduled tasks can return to the same chat with its existing
+context; eligible ChatGPT web/mobile tasks can also use supported GitHub PR
+events. These are separately configured product capabilities, not behavior
+provided by this repository. A Work event-triggered review task is another
+supported option when available. Either receiver must
 read the journal and independently verify evidence rather than treating a
 notification as acceptance.
+
+Current product references: [scheduled tasks](https://learn.chatgpt.com/docs/automations)
+and [Codex GitHub integration](https://learn.chatgpt.com/docs/third-party/github).
+`@codex review` requests review; an explicit different `@codex` task can start
+a legacy cloud chat with PR context when available. Neither an inbox label
+nor that cloud task promises to resume an existing desktop implementer.
+GitHub label filters are supported for eligible event tasks; a label change
+alone is not established as a supported event trigger. Verify the actual
+saved configuration and a genuine delivered event independently.
 
 ## Operating rules
 
@@ -106,10 +119,22 @@ notification as acceptance.
 
 Prevent cycles: when a Work-triggered task updates a PR, its next-role marker
 must **not** be `work` unless a new Work task is genuinely needed. Consumers
-must deduplicate events by repository + PR number + head SHA + target role,
-and recheck GitHub state before acting. Transitions are advisory, not locks:
+must deduplicate events by repository + PR number + head SHA + intended owner
++ handoff blob revision, and recheck GitHub state before acting. Record
+observation, notification delivery and published acknowledgment separately.
+If marker/label and the current-head journal disagree, preserve the conflict
+for its owner; do not silently relabel it or infer acceptance. Keep manual
+Project values, owner decisions, dependencies and production holds intact.
+Unchanged checks should remain quiet unless a new actionable event, failure,
+completion or user decision appears. Transitions are advisory, not locks:
 humans resolve conflicting work or ownership. Webhook activity is not evidence
 that the downstream agent acted; only the receiver's published acknowledgment is.
+
+An optional [central Project reconciliation prototype](PROJECT_SYNC.md) can
+print additions, verified blank actor proposals and notification/cursor
+proposals from bounded live reads or offline snapshots. It cannot apply them,
+deliver notifications, acknowledge work, or schedule itself. It is a derived
+view of this protocol rather than another ownership authority.
 
 ## Security and limitations
 

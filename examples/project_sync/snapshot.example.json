@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "complete": true,
+  "project": {
+    "owner": "example", "owner_type": "user", "number": 1, "id": "PROJECT_EXAMPLE",
+    "items": [
+      {"id": "ITEM_2", "archived": false, "fields": {},
+       "content": {"id": "PR_2", "kind": "PullRequest", "repository": "example/widget", "number": 2}},
+      {"id": "ITEM_3", "archived": true, "fields": {"Next actor": "Maintainer"},
+       "content": {"id": "PR_3", "kind": "PullRequest", "repository": "example/widget", "number": 3}},
+      {"id": "ITEM_6", "archived": false,
+       "fields": {"Status": "Blocked", "Approval gate": "Owner decision"},
+       "content": {"id": "PR_6", "kind": "PullRequest", "repository": "example/widget", "number": 6}}
+    ]
+  },
+  "pull_requests": [
+    {"id": "PR_2", "kind": "PullRequest", "repository": "example/widget", "number": 2,
+     "state": "OPEN", "merged": false, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "body": "<!-- ai-context-next: work -->", "labels": ["ai-next:work"]},
+    {"id": "PR_3", "kind": "PullRequest", "repository": "example/widget", "number": 3,
+     "state": "OPEN", "merged": false, "head_sha": "cccccccccccccccccccccccccccccccccccccccc",
+     "body": "", "labels": []},
+    {"id": "PR_5", "kind": "PullRequest", "repository": "example/widget", "number": 5,
+     "state": "OPEN", "merged": false, "head_sha": "dddddddddddddddddddddddddddddddddddddddd",
+     "body": "", "labels": []},
+    {"id": "PR_6", "kind": "PullRequest", "repository": "example/widget", "number": 6,
+     "state": "MERGED", "merged": true, "head_sha": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+     "body": "", "labels": []}
+  ],
+  "issues": [
+    {"id": "ISSUE_4", "kind": "Issue", "repository": "example/widget", "number": 4, "state": "OPEN"}
+  ],
+  "handoffs": [
+    {"repository": "example/widget", "number": 2, "path": "docs/sessions/task.md",
+     "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "observed_head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+     "blob_sha": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+     "text": "# Session: Example\n\n## Coordination\nTask ID: example-task\nStatus: ready\nNext owner: Work implementer\nRepository: example/widget\n\n## Goal\nRead-only review.\n"}
+  ]
+}
