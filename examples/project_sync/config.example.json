@@ -1,0 +1,16 @@
+{
+  "project": {"owner": "example", "owner_type": "user", "number": 1},
+  "repositories": [
+    {"name": "example/widget", "issues": [4],
+     "handoffs": {"2": "docs/sessions/task.md"}}
+  ],
+  "actor_field": "Next actor",
+  "roles": {
+    "work": {"owner": "Work implementer", "value": "Work"},
+    "codex": {"owner": "Codex reviewer", "value": "Codex"}
+  },
+  "limits": {
+    "max_calls": 100, "max_pages": 100, "page_size": 50,
+    "rate_floor": 100, "max_handoff_bytes": 65536
+  }
+}

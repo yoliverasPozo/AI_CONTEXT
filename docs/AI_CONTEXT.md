@@ -19,6 +19,8 @@ history. The repository is both a reusable reference and a live example.
   `templates/HANDOFF.md` extends existing session records; Work's adapter uses
   the same records. This adds no mandatory directory, service, or task database.
 - Git versions memory with the implementation; PRs review both together.
+- Optional source-only Project adapter: `examples/project_sync/` collects
+  bounded GitHub reads or offline snapshots and prints proposals only.
 
 ## Current State
 
@@ -37,6 +39,11 @@ history. The repository is both a reusable reference and a live example.
   pointers, acknowledgment, checks, blockers, concurrent work, and publication.
   Work instructions include read-only/no-access fallback and return prompts.
 - Unit tests and GitHub Actions cover initializer behavior and resource sync.
+- The inbox router is installed through merged PR #5 and permission fix PR #9.
+  PR #8 has successful router runs and a matching `ai-next:chatgpt` marker/label;
+  its journal still names Work, so the formal receiving handoff remains conflicted.
+- The optional central Project prototype has no executable apply, credential,
+  scheduling, notification delivery or agent invocation path.
 
 ## Current Problems
 
@@ -45,8 +52,11 @@ history. The repository is both a reusable reference and a live example.
   coordination manually; `--force` replaces current context and selected files.
 - No context validator, stale-context detection, metadata parser, coordination
   lock, general automatic messaging, or dedicated secret-scanning integration.
-- An opt-in GitHub agent inbox/label hook is proposed in draft form on
-  `feat/agent-inbox-hooks`; end-to-end PR event delivery is untested.
+- Individual inbox routing and automatic Codex review have live evidence;
+  a fully acknowledged, deduplicated autonomous handoff loop remains unverified.
+- Project prototype live acceptance is blocked by the current login's missing
+  Project read access. Offline tests do not establish actual complete live reads,
+  concurrency/recovery, credential suitability or apply readiness.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -63,8 +73,11 @@ history. The repository is both a reusable reference and a live example.
 - Completed the controlled ChatGPT -> Work -> Codex -> ChatGPT trial
   in [three-agent journal](sessions/2026-10-26-three-agent-roundtrip.md).
   PR #4 was merged on 2026-10-26 as `e7ef9c530bb04fd5a15c8f2298a19228dd33a7ae`.
-- Proposed the [optional GitHub agent inbox](AGENT_INBOX.md) with an opt-in
-  pull-request label router and experimental ADR 0004.
+- Merged the [optional GitHub agent inbox](AGENT_INBOX.md) in PR #5 as
+  `5d5bdf9ed775a81355bd18e7e916a9dae9a85ee3`; PR #9's permission fix
+  reached main as `8d3b6707fe292662ca879dd399b3c53aee632030`.
+- Added an experimental [central Project proposal adapter](PROJECT_SYNC.md),
+  guarded live reads, generic offline fixtures and handoff-conflict rules.
 - Earlier milestones established dogfooding, Git-versioned memory, and the
   dependency-free Python initializer; see ADRs and prior session journals.
 
@@ -82,25 +95,35 @@ history. The repository is both a reusable reference and a live example.
 - Coordination remains optional, uses existing sessions, and treats ownership
   as advisory. Work is a thin adapter, not a separate memory layer. See
   [experimental ADR 0003](decisions/0003-optional-agent-coordination.md).
+- Project fields remain derived views, never authorization; the central adapter
+  is plan-only under [experimental ADR 0005](decisions/0005-central-project-projection.md).
 
 ## Active Work
 
-- Opt-in GitHub agent inbox: `feat/agent-inbox-hooks`, status `review` in
-  [draft PR #5](https://github.com/yoliverasPozo/AI_CONTEXT/pull/5), pending
-  workflow security review, CI and separate user merge approval. The workflow
-  routes opted-in PR labels; no external Work/Codex event subscriptions are
-  configured yet. [Design](AGENT_INBOX.md), [ADR 0004](decisions/0004-optional-github-agent-inbox.md),
-  [session](sessions/2026-10-26-agent-inbox-hooks.md).
+- Central Project prototype: branch `feat/central-project-sync-prototype`,
+  review stage; [current session](sessions/2026-11-02-central-project-sync.md).
+  Local planning is tested; live read coverage and apply remain unaccepted.
+- [PR #8](https://github.com/yoliverasPozo/AI_CONTEXT/pull/8) remains open at
+  `44ef97da3786d30905bb341903bb7b12dc955ff5` for a read-only routing trial.
+  Its [exact-head handoff](https://github.com/yoliverasPozo/AI_CONTEXT/blob/44ef97da3786d30905bb341903bb7b12dc955ff5/docs/sessions/2026-10-27-inbox-work-event-smoke.md)
+  says `ready`, next owner ChatGPT Work, while marker/label say ChatGPT.
+  Preserve this synthetic-transition conflict; no receiving acknowledgment is
+  published. Its Active Work discovery review finding remains unresolved on
+  that PR. The trial is not approved for merge or implementation.
+- PR #7's automatic review completed at `e06adb31470c585209069a6f1416001c57d04475`
+  with trigger `New commits`; PR #8's review says `PR opened`. PR #6's review
+  at `513167c3b50e80da1d64766767119c37f3af8140` was manually requested.
+  These review experiments are separate from implementation handoff acceptance.
 - The prior [three-agent trial](sessions/2026-10-26-three-agent-roundtrip.md)
   is complete and merged in PR #4. ADR 0003 remains experimental.
 
 ## Next Steps
 
-1. Review/validate the optional GitHub agent inbox and workflow; do not merge
-   the new feature PR without separate approval.
-2. Run a real opt-in event delivery test in AI_CONTEXT (including Work/Codex
-   subscriptions and a ChatGPT watcher), then trial an existing project.
-   Keep ADRs 0003 and 0004 experimental until tested.
+1. Review the central prototype and its exact-head checks. Preserve its plan-only
+   boundary; inspect credential options separately before any live activation.
+2. Resolve PR #8's journal/marker conflict through its owner. Independently
+   verify canonical watcher configuration, quiet deduplication and a published
+   receiving acknowledgment. Keep ADRs 0003/0004/0005 experimental.
 3. Improve surgical/idempotent initialization for existing repositories.
 4. Dogfood initialization, plan package distribution, and consider a lightweight
    validator, stale-context checks, and secret scanning after real use.
@@ -117,6 +140,7 @@ history. The repository is both a reusable reference and a live example.
 - `src/ai_context/cli.py`, `pyproject.toml`: initializer and packaging.
 - `tests/`, `.github/workflows/tests.yml`: local and cross-platform CI checks.
 - `assets/ai-context-banner.svg`: README banner.
+- `docs/PROJECT_SYNC.md`, `examples/project_sync/`: optional plan-only Project adapter.
 
 ## Verification Notes
 
@@ -137,3 +161,12 @@ scope at PR head `fa486ff2840c15173d8296761a570bf836ed593b`; GitHub Actions
 run 40400477647 passed 4/4 jobs on that revision. The final review is recorded
 in the trial journal. Subsequent documentation-only commits need their own CI
 confirmation and do not change the already-verified implementation.
+
+2026-11-02 live inspection confirmed installed router successes
+[40577601856](https://github.com/yoliverasPozo/AI_CONTEXT/actions/runs/40577601856)
+and [40580597743](https://github.com/yoliverasPozo/AI_CONTEXT/actions/runs/40580597743).
+Saved account-side watcher reports indicate individual Work event receipt and
+later ChatGPT discovery, but are not published repository acknowledgments or
+independent proof of current scheduler settings. The central prototype's local
+tests and sanitized live-read limitation are recorded in its dated session;
+no Project write or schedule was installed.

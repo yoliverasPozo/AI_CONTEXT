@@ -36,6 +36,10 @@ AI_CONTEXT is intentionally **dogfooding its own convention**. The generic files
 
 That makes this repository both the reference material **and a working example**. The first decision record documents why the project chose to self-host the pattern: [`0001-dogfood-ai-context.md`](docs/decisions/0001-dogfood-ai-context.md).
 
+For an optional, source-only GitHub Project adapter, see the
+[central reconciliation prototype](docs/PROJECT_SYNC.md). It prints bounded
+read-only proposals; it does not apply changes or alter the core convention.
+
 ---
 
 ## The problem
