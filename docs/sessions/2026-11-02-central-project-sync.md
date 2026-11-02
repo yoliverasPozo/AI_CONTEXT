@@ -74,7 +74,7 @@ prototype. The user authorized autonomous implementation and a draft PR.
   failed because their modules were absent. Additional malformed-marker,
   metadata and missing-field tests failed against the first implementation;
   the validation was tightened and those tests passed.
-- Candidate targeted suite: 28/28 new tests passed; complete suite 46/46 passed
+- Candidate targeted suite: 31/31 new tests passed; complete suite 49/49 passed
   with checkout import provenance. Whitespace and local Markdown targets were
   also checked. Actual publication head and its remote CI must still be checked
   before accepting the PR.
@@ -96,6 +96,13 @@ prototype. The user authorized autonomous implementation and a draft PR.
   than silently proposing duplicates.
 - A controller snapshot is not atomic. Concurrent head/item changes and
   exactly-once notification delivery are outside this plan-only prototype.
+- Independent review reproduced two important proposal-boundary bugs: a fenced
+  whole-journal example could be treated as live metadata, and a configured
+  actor field could target an approval/status field. Failing regressions were
+  added; section selection is now fence-aware across the whole document and
+  the sole projection field is exactly `Next actor`. Tests also preserve normal
+  journals with unrelated fenced examples. Authentication guidance was qualified
+  for organization versus personal Projects.
 
 ## Current Result
 

@@ -55,8 +55,8 @@ def validate_config(config):
                     and path.endswith(".md") and "\\" not in path
                     and all(p not in ("", ".", "..") for p in path.split("/"))
                     and not any(ord(c) < 32 for c in path), "invalid handoff path")
-    require(type(result.get("actor_field")) is str and result["actor_field"].strip(),
-            "explicit actor field required")
+    require(result.get("actor_field") == "Next actor",
+            "prototype actor field must be exactly Next actor; other fields are never projected")
     roles = result.get("roles")
     require(type(roles) is dict and roles and set(roles) <= {"work", "codex", "chatgpt"},
             "explicit role mappings required")
@@ -83,6 +83,37 @@ def identity(content):
                 and REPOSITORY.fullmatch(content["repository"])
                 and positive(content.get("number")), "invalid repository content identity")
     return content["id"]
+
+
+def coordination_section(text):
+    """Select one real heading outside Markdown fences, not a quoted example."""
+    sections, current, fenced_section, fence = [], None, False, None
+    for line in text.splitlines():
+        if fence is not None:
+            if re.fullmatch(r" {0,3}" + re.escape(fence[0]) + "{" + str(fence[1]) + r",}\s*", line):
+                fence = None
+            continue
+        opening = re.match(r"^ {0,3}(`{3,}|~{3,})", line)
+        if opening:
+            fence = (opening[1][0], len(opening[1]))
+            if current is not None:
+                fenced_section = True
+            continue
+        if re.fullmatch(r"## Coordination\s*", line):
+            if current is not None:
+                sections.append((current, fenced_section))
+            current, fenced_section = [], False
+        elif re.match(r"^## ", line):
+            if current is not None:
+                sections.append((current, fenced_section))
+            current, fenced_section = None, False
+        elif current is not None:
+            current.append(line)
+    if current is not None:
+        sections.append((current, fenced_section))
+    require(len(sections) == 1, "missing or ambiguous unfenced Coordination section")
+    require(not sections[0][1], "fenced coordination metadata unsupported")
+    return sections[0][0]
 
 
 def ready_handoff(config, candidate, records):
@@ -113,13 +144,8 @@ def ready_handoff(config, candidate, records):
             "handoff content unavailable or too large")
     # Deliberately narrow Markdown subset: one Coordination section; no YAML,
     # code fences, execution, fuzzy ownership matching or prose inference.
-    sections = re.findall(r"(?m)^## Coordination\s*$", text)
-    require(len(sections) == 1, "missing or ambiguous Coordination section")
-    section = re.split(r"(?m)^## Coordination\s*$", text)[1]
-    section = re.split(r"(?m)^## ", section)[0]
-    require("```" not in section and "~~~" not in section, "fenced coordination metadata unsupported")
     metadata = {}
-    for line in section.splitlines():
+    for line in coordination_section(text):
         match = re.fullmatch(r"(Task ID|Status|Next owner|Repository): ([^\r\n]+)", line)
         if re.match(r"\s*(Task ID|Status|Next owner|Repository)\s*:", line, re.I):
             require(match is not None, "malformed coordination metadata")

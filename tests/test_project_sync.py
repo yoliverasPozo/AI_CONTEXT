@@ -137,6 +137,25 @@ class PlannerTests(unittest.TestCase):
         result = plan(config(), snapshot(items=[item()], handoffs=[record]))
         self.assertEqual(result["field_proposals"], [])
 
+    def test_quoted_fenced_example_cannot_become_handoff_authority(self):
+        for fence in ["```", "````", "~~~"]:
+            with self.subTest(fence=fence):
+                record = handoff(text=fence + "markdown\n" + handoff()["text"] + "\n" + fence)
+                result = plan(config(), snapshot(items=[item()], handoffs=[record]))
+                self.assertEqual(result["field_proposals"], [])
+                self.assertEqual(result["notification_proposals"], [])
+
+    def test_code_fences_outside_live_coordination_are_allowed(self):
+        text = "# Journal\n\n```markdown\n## Coordination\nStatus: active\n```\n\n" + handoff()["text"]
+        result = plan(config(), snapshot(items=[item()], handoffs=[handoff(text=text)]))
+        self.assertEqual(len(result["field_proposals"]), 1)
+
+    def test_projection_cannot_target_reserved_fields(self):
+        for field in ["Approval gate", "Status", "Handoff state", "Workstream", "Repository", "next actor"]:
+            with self.subTest(field=field), self.assertRaises(PlanError):
+                changed = config(); changed["actor_field"] = field
+                plan(changed, snapshot(items=[item()], handoffs=[handoff()]))
+
     def test_archived_ready_handoff_is_not_queued(self):
         result = plan(config(), snapshot(items=[item(archived=True)], handoffs=[handoff()]))
         self.assertEqual(result["field_proposals"], [])

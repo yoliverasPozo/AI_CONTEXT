@@ -45,8 +45,10 @@ private location and select:
 - Optional `handoffs`: PR-number strings mapped to exact
   `docs/sessions/*.md` paths. This prevents discovering/executing arbitrary
   paths from PR text. Missing configuration produces unknown handoff state.
-- The existing `actor_field` name and exact role-to-journal-owner/Project-value
-  mappings. This prototype proposes values; it does not create or validate
+- `actor_field` must be exactly `Next actor`. Other fields, including Status,
+  approval gates, handoff state and workstream, cannot be projection targets.
+  Select exact role-to-journal-owner/Project-value mappings. This prototype
+  proposes values; it does not create or validate
   Project select options for a future write.
 - Bounded `limits`. Defaults: 100 GraphQL calls, 100 pages per connection,
   50 records per page, remaining rate floor 100, handoff size 65,536 bytes.
@@ -70,8 +72,13 @@ scope grant, login, token creation or secret inspection occurs.
 
 The existing login needs access to the selected repositories and Project.
 GitHub documents `read:project` for queries and `project` for queries/mutations;
-an appropriately configured GitHub App installation is another documented
-authentication path. The prototype does not choose or provision either. If
+an appropriately configured GitHub App installation is a documented path for
+organization-owned Projects. For personal user-owned Projects, the documented
+route is a classic PAT with `read:project` for reads plus `repo` when private
+repository content requires it; a future writer would need `project`. Fine-grained
+PAT support and a personal-Project App installation path are not established
+by the cited Projects documentation. The prototype does not choose or provision
+credentials. If
 current credentials lack access, it exits nonzero with a sanitized diagnostic.
 Resolve access through a separately authorized credential decision; do not
 automatically widen existing credentials. [GitHub Project authentication](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects).
@@ -128,8 +135,10 @@ A blank actor requires all of:
   owner/repository must match the configuration/current PR.
 - A nonarchived open PR.
 
-The parser accepts a narrow Markdown subset, rejects conflicting/malformed
-metadata and fenced metadata, and never evaluates document content. Missing,
+The parser accepts a narrow Markdown subset, selects Coordination headings
+outside whole-document Markdown fences, rejects conflicting/malformed metadata
+and fences inside that section, and never evaluates document content. A fenced
+example elsewhere in the journal is ignored. Missing,
 active, blocked, review, complete, cancelled, stale or conflicting state yields
 an explicit unknown/conflict diagnostic. It can still propose a missing item;
 that addition grants no permission or ownership. Journal status remains curated
