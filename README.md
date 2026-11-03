@@ -39,6 +39,8 @@ That makes this repository both the reference material **and a working example**
 For an optional, source-only GitHub Project adapter, see the
 [central reconciliation prototype](docs/PROJECT_SYNC.md). It prints bounded
 read-only proposals; it does not apply changes or alter the core convention.
+The separate [single-item writer](docs/PROJECT_WRITER.md) is disabled by default
+and requires an explicit, exact-state owner authorization before execution.
 
 ---
 

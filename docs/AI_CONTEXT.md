@@ -21,6 +21,9 @@ history. The repository is both a reusable reference and a live example.
 - Git versions memory with the implementation; PRs review both together.
 - Optional source-only Project adapter: `examples/project_sync/` collects
   bounded GitHub reads or offline snapshots and prints proposals only.
+- A separate disabled [single-item writer](PROJECT_WRITER.md) adds one explicitly
+  approved PR with complete-state rechecks and local durable receipts. It is not
+  installed, scheduled, or invoked by the planner or inbox router.
 
 ## Current State
 
@@ -42,8 +45,9 @@ history. The repository is both a reusable reference and a live example.
 - The inbox router is installed through merged PR #5 and permission fix PR #9.
   PR #8 has successful router runs and a matching `ai-next:chatgpt` marker/label;
   its journal still names Work, so the formal receiving handoff remains conflicted.
-- The optional central Project prototype has no executable apply, credential,
-  scheduling, notification delivery or agent invocation path.
+- The original Project planner remains read-only. The separate add-only writer
+  requires config enablement, explicit execution and exact-digest approval;
+  recovery/rollback assessment are read-only. No live add has been authorized.
 
 ## Current Problems
 
@@ -54,9 +58,12 @@ history. The repository is both a reusable reference and a live example.
   lock, general automatic messaging, or dedicated secret-scanning integration.
 - Individual inbox routing and automatic Codex review have live evidence;
   a fully acknowledged, deduplicated autonomous handoff loop remains unverified.
-- Project prototype live acceptance is blocked by the current login's missing
-  Project read access. Offline tests do not establish actual complete live reads,
-  concurrency/recovery, credential suitability or apply readiness.
+- November 3 live-read acceptance succeeded using existing Windows CLI access;
+  archived/unarchived coverage was complete, with no current archived sample.
+  A separate writer-reader check read every populated supported field. This
+  demonstrates read access, not write permission or live mutation/recovery.
+- GitHub has no atomic state comparison/add or creation-ownership flag. Receipts
+  cannot prove the writer created an item; automatic rollback is excluded.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -78,6 +85,10 @@ history. The repository is both a reusable reference and a live example.
   reached main as `8d3b6707fe292662ca879dd399b3c53aee632030`.
 - Added an experimental [central Project proposal adapter](PROJECT_SYNC.md),
   guarded live reads, generic offline fixtures and handoff-conflict rules.
+- PR #10 merged as `d0c9cbf770d12d505b08210c3ed42f9ae0cded4b`.
+  November 3 adds a disabled add-only writer, complete-state receipts, bounded
+  one-attempt recovery and guarded manual rollback assessment; see the
+  [implementation session](sessions/2026-11-03-add-only-project-writer.md).
 - Earlier milestones established dogfooding, Git-versioned memory, and the
   dependency-free Python initializer; see ADRs and prior session journals.
 
@@ -95,14 +106,16 @@ history. The repository is both a reusable reference and a live example.
 - Coordination remains optional, uses existing sessions, and treats ownership
   as advisory. Work is a thin adapter, not a separate memory layer. See
   [experimental ADR 0003](decisions/0003-optional-agent-coordination.md).
-- Project fields remain derived views, never authorization; the central adapter
-  is plan-only under [experimental ADR 0005](decisions/0005-central-project-projection.md).
+- Project fields remain derived views, never authorization. The planner stays
+  plan-only under [ADR 0005](decisions/0005-central-project-projection.md);
+  [experimental ADR 0006](decisions/0006-disabled-add-only-project-writer.md)
+  bounds the separate writer. No schedule or routing changes are included.
 
 ## Active Work
 
-- Central Project prototype: branch `feat/central-project-sync-prototype`,
-  review stage; [current session](sessions/2026-11-02-central-project-sync.md).
-  Local planning is tested; live read coverage and apply remain unaccepted.
+- Disabled writer: branch `feat/project-add-only-writer`, draft review stage.
+  Live reads passed; execution is tested with controlled transports only.
+  A single-item live pilot requires separate exact-source/state authorization.
 - [PR #8](https://github.com/yoliverasPozo/AI_CONTEXT/pull/8) remains open at
   `44ef97da3786d30905bb341903bb7b12dc955ff5` for a read-only routing trial.
   Its [exact-head handoff](https://github.com/yoliverasPozo/AI_CONTEXT/blob/44ef97da3786d30905bb341903bb7b12dc955ff5/docs/sessions/2026-10-27-inbox-work-event-smoke.md)
@@ -119,8 +132,9 @@ history. The repository is both a reusable reference and a live example.
 
 ## Next Steps
 
-1. Review the central prototype and its exact-head checks. Preserve its plan-only
-   boundary; inspect credential options separately before any live activation.
+1. Review the disabled add-only writer and its exact-head/state/receipt tests.
+   A single-item pilot needs a fresh private proposal and explicit owner approval;
+   use existing credentials only. Recurring activation remains a separate stage.
 2. Resolve PR #8's journal/marker conflict through its owner. Independently
    verify canonical watcher configuration, quiet deduplication and a published
    receiving acknowledgment. Keep ADRs 0003/0004/0005 experimental.
@@ -141,6 +155,8 @@ history. The repository is both a reusable reference and a live example.
 - `tests/`, `.github/workflows/tests.yml`: local and cross-platform CI checks.
 - `assets/ai-context-banner.svg`: README banner.
 - `docs/PROJECT_SYNC.md`, `examples/project_sync/`: optional plan-only Project adapter.
+- `docs/PROJECT_WRITER.md`, `examples/project_sync/writer*.py`: separate disabled
+  add-only writer and read-only recovery/rollback assessment.
 
 ## Verification Notes
 
