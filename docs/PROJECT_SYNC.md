@@ -1,10 +1,13 @@
 # Optional central Project reconciliation prototype
 
-The example in `examples/project_sync/` prints a reviewable JSON proposal for
+The planner invoked with `python -m examples.project_sync` prints a reviewable JSON proposal for
 one explicitly selected GitHub Project. It can inspect real GitHub data through
 an existing `gh` login or simulate the same planner using a local snapshot.
 **It cannot write to GitHub, apply a plan, send notifications, save a cursor,
 create credentials, run an agent, or schedule itself.**
+
+A separate [disabled add-only writer](PROJECT_WRITER.md) has its own explicit
+scope, state digest, approval and execution gates. The planner never invokes it.
 
 This is an experimental adapter to [coordination v1](COORDINATION.md) and the
 [handoff inbox](AGENT_INBOX.md), not a new requirement of AI_CONTEXT. The core
