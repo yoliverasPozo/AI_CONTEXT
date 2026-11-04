@@ -1,9 +1,12 @@
 """Bounded complete-state reader and one fixed, separately armed add transport."""
 import copy
 import re
+import time
 
 from .collector import GhClient, gh_transport, connection_page, whole_connection
 from .writer import require, normalize, identifier, WriterError
+from .writer_diagnostics import error_code, safe_evidence
+from .writer_journal import sha
 
 PAGE = "totalCount pageInfo { hasNextPage endCursor }"
 FIELD = "field { ... on ProjectV2FieldCommon { id } }"
@@ -104,17 +107,58 @@ class Backend:
         self.armed=armed is True and self.config["enabled"] is True
         self.attempted=False
         self.metrics={"read_calls":0,"read_points":0,"mutation_attempts":0}
+        self.read_evidence = {}
+        self._transport_failure = None
 
     def _read_transport(self, document, variables):
         self.metrics["read_calls"]+=1
-        response=self.transport(document,variables)
+        page = {"call_index": self.metrics["read_calls"]}
+        self.read_evidence["pages"].append(page)
+        try:
+            response=self.transport(document,variables)
+        except Exception as error:
+            self._transport_failure = error_code(error)
+            raise
         data=response.get("data") if type(response) is dict else None
         rate=data.get("rateLimit") if type(data) is dict else None
         if type(rate) is dict and type(rate.get("cost")) is int:
             self.metrics["read_points"]+=rate["cost"]
+        if type(rate) is dict:
+            for key in ("cost", "remaining"):
+                if type(rate.get(key)) is int: page[key] = rate[key]
+        if type(data) is dict and type(data.get("project")) is dict:
+            project = data["project"]
+            items = project.get("items")
+            if type(items) is dict:
+                if type(items.get("nodes")) is list: page["node_count"] = len(items["nodes"])
+                if type(items.get("totalCount")) is int: page["total_count"] = items["totalCount"]
+                if type(items.get("pageInfo")) is dict:
+                    page["has_next_page"] = items["pageInfo"].get("hasNextPage")
+            for key, value in (("items_sha256", items), ("fields_sha256", project.get("fields")), ("target_sha256", data.get("target"))):
+                try:
+                    page[key] = sha(value)
+                except (TypeError, ValueError):
+                    pass
         return response
 
     def read(self):
+        self._transport_failure = None
+        self.read_evidence = dict(self.config["limits"], pages=[], started_at_unix=int(time.time()),
+                                  read_calls_before=self.metrics["read_calls"], points_before=self.metrics["read_points"])
+        try:
+            return self._read()
+        except Exception as error:
+            code = error_code(error)
+            if code == "transport_or_json_error" and self._transport_failure == "transport_timeout":
+                code = "transport_timeout"
+            self.read_evidence["failure_code"] = code
+            raise
+        finally:
+            self.read_evidence.update(finished_at_unix=int(time.time()), read_calls_after=self.metrics["read_calls"],
+                                      points_after=self.metrics["read_points"])
+            self.read_evidence = safe_evidence(self.read_evidence)
+
+    def _read(self):
         cfg=self.config; cursor=None; cursors=set(); items=[]; metadata=None; total=None
         for _ in range(cfg["limits"]["max_pages"]):
             data=self.client.query(READ,{"project":cfg["project"]["id"],"target":cfg["target"]["id"],

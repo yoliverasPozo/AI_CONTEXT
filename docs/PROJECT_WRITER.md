@@ -98,6 +98,11 @@ python -m examples.project_sync.writer_cli rollback-assess --config C:/private/c
 
 Recovery persists the observed complete state in the local journal, but never
 sends an add. An intent remains spent even after a crash before transmission.
+New `needs_review` receipts preserve a sanitized classification, verification
+phase and bounded page/rate evidence, plus normalized observed state when available.
+See [diagnostics and next-pilot criteria](PROJECT_WRITER_DIAGNOSTICS.md). Old
+receipts remain readable; lost observations cannot be reconstructed. Diagnostic
+capture does not change acceptance or retry behavior.
 Replaying a completed or no-op operation returns its stored historical result;
 it does not perform a fresh verification or regain permission to send.
 An absent item cannot exclude a late commit; a present item cannot prove who
