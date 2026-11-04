@@ -24,6 +24,7 @@ class Pages:
         self.old=[]
         for index in range(3):
             item=copy.deepcopy(self.wire.item);item['id']=f'OLD_{index}';item['content']['id']=f'I_{index}';self.old.append(item)
+        if 'changing_missing_archived_original' in modes:self.old[0]['isArchived']=True
 
     def __call__(self,document,variables):
         if document==ADD_ONE:
@@ -48,9 +49,10 @@ class Pages:
                 rows[-1]['fieldValues']['nodes']*=2;rows[-1]['fieldValues']['totalCount']=2
             if mode=='changing_unknown_field':rows[-1]['fieldValues']['nodes'][0]['field']['id']='UNSEEN'
             if mode=='changing_archived':rows[-1]['isArchived']=True
-            if mode=='missing_original':rows.pop(0)
+            if mode in ('missing_original','changing_missing_original','changing_missing_archived_original'):rows.pop(0)
         start=int(variables['cursor'] or 0);end=min(start+2,len(rows))
         count=len(rows)
+        if mode in ('changing_missing_original','changing_missing_archived_original') and start==0:count=4
         if mode in ('changing','changing_original','changing_bad_archive','changing_bad_fields','changing_unknown_field','changing_archived','changing_cursor') and start==0:count=3
         response['data']['project']['items']={'nodes':rows[start:end],'totalCount':count,
             'pageInfo':{'hasNextPage':end<len(rows) or (mode=='changing_cursor' and start>0),'endCursor':str(start) if mode=='changing_cursor' and start>0 else str(end)}}
@@ -107,6 +109,27 @@ class StabilizationTests(unittest.TestCase):
         self.assertEqual(result['status'],'verified_present');self.assertEqual(wire.attempt,3);self.assertEqual(wire.adds,1)
         failed=[e for e in journal.events() if e['kind']=='verification_read' and e['data']['outcome']=='failed']
         self.assertEqual(len(failed),2)
+
+    def test_terminal_count_change_cannot_hide_a_missing_original_with_a_later_stable_read(self):
+        for mode in ('changing_missing_original','changing_missing_archived_original'):
+            with self.subTest(mode=mode):
+                result,wire,journal,backend,proposal,approval=self.run_case([mode,'stable'])
+                self.assertEqual(result['status'],'needs_review')
+                self.assertEqual(result['diagnostic']['code'],'original_item_changed')
+                self.assertEqual(result['diagnostic']['phase'],'readback')
+                self.assertEqual(wire.attempt,1)
+                self.assertEqual(wire.cursors,[(1,None),(1,'2')])
+                self.assertEqual(wire.adds,1)
+                records=[e['data'] for e in journal.events() if e['kind']=='verification_read']
+                self.assertEqual(len(records),1)
+                self.assertEqual(records[0]['outcome'],'failed')
+                self.assertEqual(records[0]['diagnostic']['code'],'original_item_changed')
+                self.assertEqual([p['total_count'] for p in records[0]['diagnostic']['read_evidence']['pages']],[4,3])
+                self.assertFalse(any(e['kind']=='complete' for e in journal.events()))
+                repeated=apply(proposal,backend,journal,enabled=True,execute=True,approval=approval,now=NOW+1,clock=lambda:NOW+1)
+                self.assertEqual(repeated['status'],'recovery_required')
+                self.assertEqual(wire.attempt,1)
+                self.assertEqual(wire.adds,1)
 
     def test_persistent_count_change_stops_at_attempt_bound(self):
         result,wire,journal,*_=self.run_case(['changing'])

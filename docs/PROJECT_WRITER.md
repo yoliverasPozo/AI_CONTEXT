@@ -149,6 +149,12 @@ journaled before another read. Unknown errors, genuine drift, evidence-write or
 budget failures stop. Transport timeout uses remaining monotonic time, checked
 through final validation before acceptance; final receipt fsync is not interruptible.
 
+A terminal page must also contain every approved original item ID, including
+archived originals, before a count mismatch can permit a restart. A terminal
+omission stops with `original_item_changed`; a later stable read must not conceal
+that observed omission. Invalid counts and incomplete pages remain fatal even
+when another page reported a different count.
+
 Prepare, preflight and recover remain single-read paths. Changing config cannot
 replay a spent intent or promote historical needs_review. No mutation resend,
 compensation, credential, schedule or routing path is introduced. See

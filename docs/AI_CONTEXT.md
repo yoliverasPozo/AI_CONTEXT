@@ -70,8 +70,11 @@ history. The repository is both a reusable reference and a live example.
   The original immediate observation/exception was discarded, so its triggering
   predicate remains unknown. This does not establish unattended readiness.
 - A later pilot recorded a changed total across immediate post-add pages. Bounded
-  fresh-read stabilization is now an experimental opt-in proposal; it does not
+  fresh-read stabilization merged in PR13 as an experimental opt-in; it does not
   establish the first pilot's lost trigger or permit broader/unattended execution.
+- PR13's terminal count mismatch could restart despite a missing approved
+  original. A corrective regression/fix is under review; no further pilot is
+  prepared. Current GitHub rules do not enforce both AI reviews before merging.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -123,9 +126,13 @@ history. The repository is both a reusable reference and a live example.
 
 - Writer PR11 is merged at `451c7c8c9315a59fdff838e37d6f9b6b80e1b5c6`.
   Diagnostic PR12 merged at `4e506b29ae458cb138b0b719d8cf9607e68deb5f`.
-  Follow-up `fix/project-readback-stabilization` closes PR Lens message coverage
-  gaps and adds opt-in bounded post-add fresh reads.117 tests and independent
-  review pass; historical receipts stay immutable. See
+  PR13 stabilization merged as `c4d9fa2ae8d85fc99befdddc787bd9f4aa3edf19`;
+  117 tests and all four exact-main CI jobs passed. Reusing
+  `fix/project-readback-stabilization` for the terminal missing-original correction:
+  active/archived regression reproduced, guard added,118 tests and independent
+  review pass. No eligible missing PR found for another timed pilot; original
+  receipts stay immutable. See the [corrective session](sessions/2026-11-04-terminal-original-preservation.md),
+  [review-gate proposal](reviews/2026-11-04-review-completion-gate.md),
   [session](sessions/2026-11-04-verification-stabilization.md),
   [ADR0007](decisions/0007-bounded-post-add-readback.md) and
   [next-pilot criteria](PROJECT_WRITER_DIAGNOSTICS.md). New pilots require separate
