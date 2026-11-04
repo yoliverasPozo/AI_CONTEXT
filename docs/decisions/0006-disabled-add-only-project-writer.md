@@ -41,3 +41,9 @@ populated fields stop execution. User-owned Projects only; single operator and
 private local receipts are required. Native automations may populate new-item
 defaults. Concurrency and filesystem durability remain bounded, not transactional
 guarantees. Existing routing conflicts remain owner-managed under ADRs 0003/0004.
+
+2026-11-04 diagnostic supplement: new needs_review receipts retain fixed sanitized
+failure codes, stage, bounded page/rate fingerprints and complete normalized
+observations when available. Historical receipts remain immutable and readable;
+no lost snapshot is reconstructed. Diagnostics add no retries, acceptance bypass
+or mutation authority. See [diagnostic contract](../PROJECT_WRITER_DIAGNOSTICS.md).

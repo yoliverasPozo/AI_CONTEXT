@@ -64,6 +64,10 @@ history. The repository is both a reusable reference and a live example.
   demonstrates read access, not write permission or live mutation/recovery.
 - GitHub has no atomic state comparison/add or creation-ownership flag. Receipts
   cannot prove the writer created an item; automatic rollback is excluded.
+- A supervised pilot acknowledged its single add but returned needs_review;
+  later read-only reconciliation confirmed expected membership/preservation.
+  The original immediate observation/exception was discarded, so its triggering
+  predicate remains unknown. This does not establish unattended readiness.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -113,9 +117,12 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
-- Disabled writer: branch `feat/project-add-only-writer`, draft review stage.
-  Live reads passed; execution is tested with controlled transports only.
-  A single-item live pilot requires separate exact-source/state authorization.
+- Writer PR11 is merged at `451c7c8c9315a59fdff838e37d6f9b6b80e1b5c6`.
+  Diagnostic follow-up: `fix/project-writer-readback-diagnostics`;98 offline tests
+  and independent code review pass. No historical receipt or live item modified.
+  See [session](sessions/2026-11-04-writer-readback-diagnostics.md) and
+  [next-pilot criteria](PROJECT_WRITER_DIAGNOSTICS.md). New pilots require separate
+  source/state/expiry authority; the prior operation is permanently spent.
 - [PR #8](https://github.com/yoliverasPozo/AI_CONTEXT/pull/8) remains open at
   `44ef97da3786d30905bb341903bb7b12dc955ff5` for a read-only routing trial.
   Its [exact-head handoff](https://github.com/yoliverasPozo/AI_CONTEXT/blob/44ef97da3786d30905bb341903bb7b12dc955ff5/docs/sessions/2026-10-27-inbox-work-event-smoke.md)

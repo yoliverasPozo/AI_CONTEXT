@@ -4,6 +4,7 @@ import re
 import time
 
 from .writer_journal import canonical, sha
+from .writer_diagnostics import diagnostic
 
 
 class WriterError(ValueError):
@@ -154,13 +155,24 @@ def apply(proposal, backend, journal, *, enabled=False, execute=False, approval=
             journal.append("uncertain", {"result": result})
             return result
         journal.append("acknowledged", {"item_id": item_id, "ownership": "not_proven"})
+        after = None
+        phase = "readback"
         try:
-            after = normalize(backend.read())
+            source = backend.read()
+            phase = "normalize"
+            after = normalize(source)
+            phase = "verify_addition"
             target = addition_check(before, after)
-            require(len(target) == 1 and target[0]["id"] == item_id and not target[0]["archived"], "add readback identity mismatch")
-        except Exception:
-            result = {"status": "needs_review", "item_id": item_id, "ownership": "not_proven", "mutation_retried": False}
-            journal.append("needs_review", {"result": result})
+            require(len(target) == 1, "target absent after acknowledgment")
+            require(target[0]["id"] == item_id, "target response item differs")
+            require(not target[0]["archived"], "target archived after acknowledgment")
+        except Exception as error:
+            result = {"status": "needs_review", "item_id": item_id, "ownership": "not_proven", "mutation_retried": False,
+                      "diagnostic": diagnostic(error, phase, backend)}
+            data = {"result": result}
+            if after is not None:
+                data["observed"] = after  # Complete normalized state, private like prepared/complete receipts.
+            journal.append("needs_review", data)
             return result
         result = {"status": "verified_present", "item_id": item_id, "ownership": "not_proven"}
         journal.append("complete", {"after": after, "result": result, "ownership": "not_proven"})
