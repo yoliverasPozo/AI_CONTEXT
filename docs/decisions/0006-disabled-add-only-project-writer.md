@@ -47,3 +47,7 @@ failure codes, stage, bounded page/rate fingerprints and complete normalized
 observations when available. Historical receipts remain immutable and readable;
 no lost snapshot is reconstructed. Diagnostics add no retries, acceptance bypass
 or mutation authority. See [diagnostic contract](../PROJECT_WRITER_DIAGNOSTICS.md).
+
+Bounded post-add read restarts are a separate opt-in extension under
+[experimental ADR0007](0007-bounded-post-add-readback.md). They do not resend
+mutations or promote any historical needs_review receipt.

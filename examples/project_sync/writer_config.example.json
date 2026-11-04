@@ -2,5 +2,6 @@
   "enabled": false,
   "project": {"id": "PROJECT_NODE_ID", "owner": "example", "owner_type": "user", "number": 1},
   "target": {"id": "PR_NODE_ID", "repository": "example/widget", "number": 8, "head_sha": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},
-  "limits": {"max_calls": 30, "rate_floor": 100, "max_pages": 10, "page_size": 20}
+  "limits": {"max_calls": 30, "rate_floor": 200, "max_pages": 10, "page_size": 20},
+  "verification": {"max_attempts": 1, "max_seconds": 30, "max_calls": 10}
 }

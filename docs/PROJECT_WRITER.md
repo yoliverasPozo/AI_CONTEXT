@@ -76,7 +76,7 @@ operator set the private config to `enabled: true` and invoke:
 python -m examples.project_sync.writer_cli apply --config C:/private/config.json --directory C:/private/pilot-one --approval C:/private/approval.json --execute
 ```
 
-One fsynced intent precedes at most one mutation attempt. There are no retries.
+One fsynced intent precedes at most one mutation attempt. The mutation is never retried.
 A complete receipt stores the response item ID and full after state. All original
 items/values must remain equal and exactly the target may be added. New-item
 defaults populated by existing native Project workflows are captured, never
@@ -130,6 +130,30 @@ read points sum response `rateLimit.cost`; mutation attempts count sends, not
 measured GraphQL cost. Rate counters are shared with other clients. Bounds may
 stop after-state reads following a successful add; this is `needs_review`, with
 read-only recovery required. No recurring deployment is included or approved.
+
+## Optional post-add read stabilization
+
+An optional policy can be reviewed with the fresh source/config/proposal:
+
+```json
+"verification": {"max_attempts": 3, "max_seconds": 30, "max_calls": 9}
+```
+
+Defaults are1 attempt,30 seconds,10 verification calls; hard caps5/120/30. More
+than1 attempt requires rate_floor>=200. Existing lifetime call cap, per-attempt
+page cap and per-response rate floor remain in force. Only the internal pagination_count_changed guard can restart after a new
+acknowledgment. Every restart begins at page1 and discards prior partial pages.
+Item shape, explicit archive state, fields, original values, exact identity and
+cursor validity are checked before retry eligibility. Every failed attempt is
+journaled before another read. Unknown errors, genuine drift, evidence-write or
+budget failures stop. Transport timeout uses remaining monotonic time, checked
+through final validation before acceptance; final receipt fsync is not interruptible.
+
+Prepare, preflight and recover remain single-read paths. Changing config cannot
+replay a spent intent or promote historical needs_review. No mutation resend,
+compensation, credential, schedule or routing path is introduced. See
+[ADR0007](decisions/0007-bounded-post-add-readback.md) and
+[message coverage audit](reviews/2026-11-04-reader-error-coverage.md).
 
 Sources: [GitHub Projects API guide](https://docs.github.com/en/issues/planning-and-tracking-with-projects/automating-your-project/using-the-api-to-manage-projects),
 [Projects schema](https://docs.github.com/en/graphql/reference/projects).
