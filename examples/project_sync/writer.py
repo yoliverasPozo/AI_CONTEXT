@@ -4,7 +4,7 @@ import re
 import time
 
 from .writer_journal import canonical, sha
-from .writer_diagnostics import diagnostic
+from .writer_diagnostics import diagnostic, verification_summary
 
 
 class WriterError(ValueError):
@@ -46,6 +46,16 @@ def normalize(source):
     field_ids = {f["id"] for f in definitions}
     require(len(field_ids) == len(definitions), "duplicate field definition")
     project["fields"] = sorted(definitions, key=lambda f: f["id"])
+    result["items"] = normalize_items(items, field_ids)
+    try:
+        require(len(canonical(result)) <= 8 * 1024 * 1024, "snapshot exceeds receipt bound")
+    except (TypeError, ValueError):
+        raise WriterError("non-JSON or non-finite field value") from None
+    return result
+
+
+def normalize_items(items, field_ids):
+    """Validate observed items without declaring an incomplete page a snapshot."""
     require(type(items) is list and len(items) <= 10000, "item bound exceeded")
     item_ids, content_ids = set(), set()
     for item in items:
@@ -65,12 +75,11 @@ def normalize(source):
                     "unsupported or duplicate populated field")
             seen.add(value["field_id"])
         item["values"] = sorted(item["values"], key=lambda v: v["field_id"])
-    result["items"] = sorted(items, key=lambda item: item["id"])
     try:
-        require(len(canonical(result)) <= 8 * 1024 * 1024, "snapshot exceeds receipt bound")
+        require(len(canonical(items)) <= 8 * 1024 * 1024, "snapshot exceeds receipt bound")
     except (TypeError, ValueError):
         raise WriterError("non-JSON or non-finite field value") from None
-    return result
+    return sorted(items, key=lambda item: item["id"])
 
 
 def prepare(source, operation_id, now, expires_at):
@@ -158,7 +167,9 @@ def apply(proposal, backend, journal, *, enabled=False, execute=False, approval=
         after = None
         phase = "readback"
         try:
-            source = backend.read()
+            verification_read = getattr(backend, "read_for_verification", None)
+            source = (verification_read(before, item_id, lambda data: journal.append("verification_read", data))
+                      if callable(verification_read) else backend.read())
             phase = "normalize"
             after = normalize(source)
             phase = "verify_addition"
@@ -166,15 +177,24 @@ def apply(proposal, backend, journal, *, enabled=False, execute=False, approval=
             require(len(target) == 1, "target absent after acknowledgment")
             require(target[0]["id"] == item_id, "target response item differs")
             require(not target[0]["archived"], "target archived after acknowledgment")
+            finish_verification = getattr(backend, "finish_verification", None)
+            if callable(finish_verification):
+                finish_verification()
         except Exception as error:
             result = {"status": "needs_review", "item_id": item_id, "ownership": "not_proven", "mutation_retried": False,
                       "diagnostic": diagnostic(error, phase, backend)}
             data = {"result": result}
+            summary = verification_summary(backend)
+            if summary:
+                result["verification"] = summary
             if after is not None:
                 data["observed"] = after  # Complete normalized state, private like prepared/complete receipts.
             journal.append("needs_review", data)
             return result
         result = {"status": "verified_present", "item_id": item_id, "ownership": "not_proven"}
+        summary = verification_summary(backend)
+        if summary:
+            result["verification"] = summary
         journal.append("complete", {"after": after, "result": result, "ownership": "not_proven"})
         return result
 

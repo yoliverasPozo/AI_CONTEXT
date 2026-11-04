@@ -26,8 +26,10 @@ complete values stay in private journals under existing before/after privacy rul
 
 Old receipts remain readable. Acceptance predicates, approval/enablement, expiry,
 spent intent, no-op and rollback rules are intact. Diagnostic persistence failure
-leaves intent spent. No read/mutation retries, compensation, credentials, schedules
-or new apply pathway are introduced.
+leaves intent spent. Mutation retries, compensation, credentials, schedules and
+new apply pathways are excluded. Optional bounded post-add read restarts are
+specified in [ADR0007](decisions/0007-bounded-post-add-readback.md); default remains
+one attempt. Historical receipts are never promoted.
 
 ## Why the historical trigger remains unknown
 

@@ -4,7 +4,7 @@ import re
 import time
 
 from .collector import GhClient, gh_transport, connection_page, whole_connection
-from .writer import require, normalize, identifier, WriterError
+from .writer import require, normalize, normalize_items, identifier, WriterError
 from .writer_diagnostics import error_code, safe_evidence
 from .writer_journal import sha
 
@@ -52,8 +52,13 @@ addProjectV2ItemById(input:{projectId:$project, contentId:$content, clientMutati
 } }"""
 
 
+class _PaginationCountChanged(WriterError):
+    """Internal, independently validated count guard; only restartable failure."""
+
+
 def validate_config(config):
-    require(type(config) is dict and set(config) == {"enabled","project","target","limits"}, "invalid writer config")
+    required = {"enabled","project","target","limits"}
+    require(type(config) is dict and set(config) in (required, required | {"verification"}), "invalid writer config")
     require(type(config["enabled"]) is bool, "enabled must be an explicit boolean")
     project, target, limits = config["project"], config["target"], config["limits"]
     require(type(project) is dict and set(project)=={"id","owner","owner_type","number"}, "invalid Project scope")
@@ -64,6 +69,11 @@ def validate_config(config):
     require(type(limits) is dict and set(limits)=={"max_calls","rate_floor","max_pages","page_size"}, "invalid read limits")
     for key, low, high in (("max_calls",1,100),("rate_floor",100,5000),("max_pages",1,100),("page_size",1,100)):
         require(type(limits[key]) is int and low<=limits[key]<=high, "unsafe read limit")
+    verification = config.get("verification", {"max_attempts":1,"max_seconds":30,"max_calls":10})
+    require(type(verification) is dict and set(verification)=={"max_attempts","max_seconds","max_calls"}, "invalid verification limits")
+    for key, upper in (("max_attempts",5),("max_seconds",120),("max_calls",30)):
+        require(type(verification[key]) is int and 1<=verification[key]<=upper, "unsafe verification limit")
+    require(verification["max_attempts"]==1 or limits["rate_floor"]>=200, "stabilization requires rate floor at least 200")
     return copy.deepcopy(config)
 
 
@@ -100,15 +110,93 @@ def value(node):
 
 
 class Backend:
-    def __init__(self, config, transport=None, *, armed=False):
+    def __init__(self, config, transport=None, *, armed=False, monotonic=None):
         self.config=validate_config(config)
-        self.transport=transport or gh_transport
+        self.transport=transport or self._default_transport
+        self._monotonic = monotonic or time.monotonic
+        self._verification = None
+        self._verification_window = None
+        self.verification_summary = None
         self.client=GhClient(self.config["limits"],self._read_transport)
         self.armed=armed is True and self.config["enabled"] is True
         self.attempted=False
         self.metrics={"read_calls":0,"read_points":0,"mutation_attempts":0}
         self.read_evidence = {}
         self._transport_failure = None
+
+    def _default_transport(self, document, variables):
+        timeout = 45
+        if self._verification is not None:
+            self._guard_time()
+            timeout = min(timeout, self._verification["deadline"]-self._monotonic())
+        return gh_transport(document, variables, timeout=timeout)
+
+    def _guard_time(self):
+        if self._verification is not None:
+            require(self._monotonic() < self._verification["deadline"], "verification elapsed budget exhausted")
+
+    def _guard_read(self):
+        self._guard_time()
+        if self._verification is not None:
+            require(self.metrics["read_calls"]-self._verification["start_calls"] < self._verification["max_calls"],
+                    "verification call budget exhausted")
+
+    def _check_expected_item(self, item):
+        if self._verification is None:
+            return
+        expected = self._verification
+        original = expected["originals"].get(item["id"])
+        comparable = dict(item, values=sorted(item["values"],key=lambda v:v["field_id"]))
+        if original is not None:
+            require(comparable==original, "original item/field state changed")
+        else:
+            require(item["content_id"]==expected["before"]["target"]["id"], "unrelated Project membership changed")
+            require(item["id"]==expected["item_id"], "target response item differs")
+            require(not item["archived"], "target archived after acknowledgment")
+
+    def read_for_verification(self, before, item_id, record):
+        """Only count inconsistency can restart; every attempt starts a fresh read."""
+        policy = self.config.get("verification", {"max_attempts":1,"max_seconds":30,"max_calls":10})
+        start = self._monotonic()
+        self._verification_window = {"start":start,"deadline":start+policy["max_seconds"]}
+        self._verification = dict(policy, deadline=start+policy["max_seconds"], start_calls=self.metrics["read_calls"],
+                                  before=before, originals={i["id"]:i for i in before["items"]}, item_id=item_id)
+        self.verification_summary = dict(policy, attempts=0, elapsed_milliseconds=0, read_calls=0)
+        def persist(data):
+            try:
+                record(data)
+            except Exception:
+                self.read_evidence["failure_code"] = "verification_receipt_failed"
+                raise WriterError("verification evidence persistence failed") from None
+        try:
+            for attempt in range(1,policy["max_attempts"]+1):
+                self.verification_summary["attempts"] = attempt
+                try:
+                    snapshot = self.read()
+                    self._guard_time()
+                except Exception as error:
+                    code = self.read_evidence.get("failure_code", error_code(error))
+                    persist({"attempt":attempt,"outcome":"failed", "diagnostic":{
+                        "code":code,"phase":"readback","read_evidence":safe_evidence(self.read_evidence)}})
+                    if type(error) is not _PaginationCountChanged or attempt==policy["max_attempts"]:
+                        raise
+                    # The next fresh read checks shared budgets before its first
+                    # query and records the terminal guard if no budget remains.
+                    continue
+                persist({"attempt":attempt,"outcome":"complete_read", "read_evidence":safe_evidence(self.read_evidence)})
+                self._guard_time()
+                return snapshot
+        finally:
+            self.verification_summary.update(elapsed_milliseconds=max(0,int((self._monotonic()-start)*1000)),
+                                             read_calls=self.metrics["read_calls"]-self._verification["start_calls"])
+            self._verification = None
+
+    def finish_verification(self):
+        """Check the retained deadline after policy validation, before acceptance."""
+        if self._verification_window is not None:
+            elapsed = self._monotonic()-self._verification_window["start"]
+            self.verification_summary["elapsed_milliseconds"] = max(0,int(elapsed*1000))
+            require(self._monotonic() < self._verification_window["deadline"], "verification elapsed budget exhausted")
 
     def _read_transport(self, document, variables):
         self.metrics["read_calls"]+=1
@@ -149,8 +237,8 @@ class Backend:
             return self._read()
         except Exception as error:
             code = error_code(error)
-            if code == "transport_or_json_error" and self._transport_failure == "transport_timeout":
-                code = "transport_timeout"
+            if code == "transport_or_json_error" and self._transport_failure in ("transport_timeout", "verification_time_exhausted", "response_bound_exceeded"):
+                code = self._transport_failure
             self.read_evidence["failure_code"] = code
             raise
         finally:
@@ -160,9 +248,12 @@ class Backend:
 
     def _read(self):
         cfg=self.config; cursor=None; cursors=set(); items=[]; metadata=None; total=None
+        item_ids, content_ids = set(), set()
         for _ in range(cfg["limits"]["max_pages"]):
+            self._guard_read()
             data=self.client.query(READ,{"project":cfg["project"]["id"],"target":cfg["target"]["id"],
                                         "cursor":cursor,"size":cfg["limits"]["page_size"]})
+            self._guard_time()
             p,t=data.get("project"),data.get("target")
             require(type(p) is dict and type(t) is dict and type(p.get("owner")) is dict, "Project/PR unavailable")
             require(data.get("viewer",{}).get("login")==cfg["project"]["owner"], "unexpected gh identity; no credential changes attempted")
@@ -182,22 +273,35 @@ class Backend:
                         f["configuration"][key]=sorted(f["configuration"][key],key=lambda o:o["id"])
             project=dict(cfg["project"],public=p.get("public"),closed=p.get("closed"),fields=fields)
             observed={"project":project,"target":target}
+            if self._verification is not None:
+                require(project==self._verification["before"]["project"] and target==self._verification["before"]["target"],
+                        "Project or target state changed")
             require(metadata is None or metadata==observed, "Project/target changed during pagination")
             metadata=observed
             batch,count,page=connection_page(p.get("items"))
-            require(total is None or total==count, "membership count changed during pagination")
-            total=count
             for node in batch:
                 content=node.get("content")
                 require(type(content) is dict, "redacted Project content")
-                items.append({"id":node.get("id"),"content_id":content.get("id"),"kind":content.get("__typename"),
-                              "archived":node.get("isArchived"),"values":[value(v) for v in whole_connection(node.get("fieldValues"))]})
+                item={"id":node.get("id"),"content_id":content.get("id"),"kind":content.get("__typename"),
+                      "archived":node.get("isArchived"),"values":[value(v) for v in whole_connection(node.get("fieldValues"))]}
+                item = normalize_items([item], {f["id"] for f in fields})[0]
+                self._check_expected_item(item)
+                require(item["id"] not in item_ids and item["content_id"] not in content_ids, "duplicate item/content identity")
+                item_ids.add(item["id"]); content_ids.add(item["content_id"])
+                items.append(item)
+            if page["hasNextPage"]:
+                require(page["endCursor"] not in cursors, "pagination cursor repeated")
             require(len(items)<=count, "inconsistent item count")
             if not page["hasNextPage"]:
                 require(len(items)==count, "incomplete Project item read")
-                return normalize(dict(metadata,items=items,complete=True))
+            if total is not None and total!=count:
+                raise _PaginationCountChanged("membership count changed during pagination")
+            total=count
+            if not page["hasNextPage"]:
+                snapshot = normalize(dict(metadata,items=items,complete=True))
+                self._guard_time()
+                return snapshot
             cursor=page["endCursor"]
-            require(cursor not in cursors, "pagination cursor repeated")
             cursors.add(cursor)
         raise WriterError("Project page budget exhausted")
 

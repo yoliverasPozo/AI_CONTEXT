@@ -47,7 +47,8 @@ history. The repository is both a reusable reference and a live example.
   its journal still names Work, so the formal receiving handoff remains conflicted.
 - The original Project planner remains read-only. The separate add-only writer
   requires config enablement, explicit execution and exact-digest approval;
-  recovery/rollback assessment are read-only. No live add has been authorized.
+  recovery/rollback assessment are read-only. Each new live add requires separate
+  exact-operation authorization; implementation alone grants no pending authority.
 
 ## Current Problems
 
@@ -68,6 +69,9 @@ history. The repository is both a reusable reference and a live example.
   later read-only reconciliation confirmed expected membership/preservation.
   The original immediate observation/exception was discarded, so its triggering
   predicate remains unknown. This does not establish unattended readiness.
+- A later pilot recorded a changed total across immediate post-add pages. Bounded
+  fresh-read stabilization is now an experimental opt-in proposal; it does not
+  establish the first pilot's lost trigger or permit broader/unattended execution.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -118,9 +122,12 @@ history. The repository is both a reusable reference and a live example.
 ## Active Work
 
 - Writer PR11 is merged at `451c7c8c9315a59fdff838e37d6f9b6b80e1b5c6`.
-  Diagnostic follow-up: `fix/project-writer-readback-diagnostics`;98 offline tests
-  and independent code review pass. No historical receipt or live item modified.
-  See [session](sessions/2026-11-04-writer-readback-diagnostics.md) and
+  Diagnostic PR12 merged at `4e506b29ae458cb138b0b719d8cf9607e68deb5f`.
+  Follow-up `fix/project-readback-stabilization` closes PR Lens message coverage
+  gaps and adds opt-in bounded post-add fresh reads.117 tests and independent
+  review pass; historical receipts stay immutable. See
+  [session](sessions/2026-11-04-verification-stabilization.md),
+  [ADR0007](decisions/0007-bounded-post-add-readback.md) and
   [next-pilot criteria](PROJECT_WRITER_DIAGNOSTICS.md). New pilots require separate
   source/state/expiry authority; the prior operation is permanently spent.
 - [PR #8](https://github.com/yoliverasPozo/AI_CONTEXT/pull/8) remains open at

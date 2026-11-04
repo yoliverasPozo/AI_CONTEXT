@@ -20,10 +20,10 @@ VALUES = """__typename
 RATE = "rateLimit { remaining cost }"
 
 
-def gh_transport(document, variables):
+def gh_transport(document, variables, *, timeout=45):
     completed = subprocess.run(["gh", "api", "graphql", "--hostname", "github.com", "--input", "-"],
         input=json.dumps({"query": document, "variables": variables}), capture_output=True,
-        text=True, encoding="utf-8", timeout=45, check=True)
+        text=True, encoding="utf-8", timeout=timeout, check=True)
     require(len(completed.stdout.encode("utf-8")) <= 16 * 1024 * 1024,
             "GraphQL response exceeds 16 MiB limit")
     return json.loads(completed.stdout)
