@@ -37,6 +37,11 @@ def lens_body(head=HEAD, review=None):
     )
 
 
+def lens_finding_body(head=HEAD):
+    return lens_body(head, f"<details>\n<summary><b>1 finding</b> on the diff · reviewed "
+                     f"<code>{head[:7]}</code></summary>\n</details>")
+
+
 def comment(node, number, bot, login, app, body):
     actor = {"__typename": "Bot", "databaseId": bot, "login": login.removesuffix("[bot]")}
     rest = {
@@ -116,13 +121,14 @@ class GateTests(unittest.TestCase):
     def test_lenses_rendered_while_review_pending(self):
         data = fixture()
         set_body(data, 1, lens_body(review=f"**Reviewing `{HEAD[:7]}`** · this comment updates in place"))
-        self.assert_blocked(data, "pr_lens_incomplete_or_findings")
+        result = evaluate(data, 42)
+        self.assertTrue(result.eligible)
+        self.assertEqual(result.evidence["pr_lens_outcome"], "incomplete")
 
     def test_unresolved_findings_even_with_resolved_threads(self):
         for index, body, reason in (
             (0, codex_body(findings=True, unresolved=True), "codex_findings"),
-            (1, lens_body(review="<details>\n<summary><b>1 finding</b></summary>"),
-             "pr_lens_incomplete_or_findings"),
+            (1, lens_finding_body(), "pr_lens_findings"),
         ):
             with self.subTest(index=index):
                 data = fixture()
@@ -140,20 +146,22 @@ class GateTests(unittest.TestCase):
 
     def test_clean_current_rereview_with_resolved_old_thread(self):
         data = fixture()
-        data["graph"]["pull"]["reviewThreads"] = connection([{"id": "RT_old", "isResolved": True}])
+        data["graph"]["pull"]["reviewThreads"] = connection([
+            {"id": "RT_old", "isResolved": True, "comments": connection([])},
+        ])
         self.assertTrue(evaluate(data, 42).eligible)
 
     def test_old_review_does_not_carry_forward(self):
-        for index, body, reason in (
-            (0, codex_body(NEXT), "codex_stale"),
-            (1, lens_body(NEXT), "pr_lens_stale"),
-            (1, lens_body(review="✨ Nothing flagged · reviewed `ccccccc`"),
-             "pr_lens_incomplete_or_findings"),
-        ):
-            with self.subTest(index=index, reason=reason):
+        data = fixture()
+        set_body(data, 0, codex_body(NEXT))
+        self.assert_blocked(data, "codex_stale")
+        for body in (lens_body(NEXT), lens_body(review="✨ Nothing flagged · reviewed `ccccccc`")):
+            with self.subTest(body=body):
                 data = fixture()
-                set_body(data, index, body)
-                self.assert_blocked(data, reason)
+                set_body(data, 1, body)
+                result = evaluate(data, 42)
+                self.assertTrue(result.eligible)
+                self.assertEqual(result.evidence["pr_lens_outcome"], "unknown")
 
     def test_lens_requires_authenticated_full_sha_transition(self):
         for prior_head in (HEAD[:7] + "b" * 33, None):
@@ -164,7 +172,9 @@ class GateTests(unittest.TestCase):
                     lens_body(prior_head, f"**Reviewing `{HEAD[:7]}`** · this comment updates in place")
                     if prior_head else lens_body()
                 )
-                self.assert_blocked(data, "pr_lens_review_transition_unverified")
+                result = evaluate(data, 42)
+                self.assertTrue(result.eligible)
+                self.assertEqual(result.evidence["pr_lens_outcome"], "unknown")
 
     def test_new_standalone_bot_review_cannot_hide_behind_clean_summary(self):
         data = fixture()
@@ -177,7 +187,116 @@ class GateTests(unittest.TestCase):
     def test_later_drawing_check_cannot_reuse_older_clean_review(self):
         data = fixture()
         data["checks"][-1]["completed_at"] = TIME
-        self.assert_blocked(data, "pr_lens_check_transition_mismatch")
+        result = evaluate(data, 42)
+        self.assertTrue(result.eligible)
+        self.assertEqual(result.evidence["pr_lens_outcome"], "unknown")
+
+    def test_codex_report_with_verified_resolved_findings_can_pass(self):
+        data = fixture()
+        set_body(data, 0, codex_body(findings=True, unresolved=False))
+        self.assertTrue(evaluate(data, 42).eligible)
+
+    def test_pr_lens_missing_comment_or_drawing_only_is_never_clean(self):
+        for mode in ("missing", "drawing", "disappeared", "spoof"):
+            with self.subTest(mode=mode):
+                data = fixture()
+                if mode == "missing":
+                    data["comments"].pop()
+                elif mode == "drawing":
+                    body = "<!-- pr-lens:sticky -->\n<!-- pr-lens:drawing -->"
+                    set_body(data, 1, body)
+                elif mode == "disappeared":
+                    data["graph"]["comments"][1] = None
+                else:
+                    data["comments"][1]["performed_via_github_app"]["id"] = 123
+                    set_body(data, 1, lens_finding_body())
+                result = evaluate(data, 42)
+                self.assertTrue(result.eligible)
+                self.assertEqual(result.evidence["pr_lens_outcome"],
+                                 "incomplete" if mode == "drawing" else "unknown")
+
+    def test_known_lens_findings_survive_head_change_and_removed_review_section(self):
+        data = fixture()
+        prior_finding = lens_finding_body()
+        data = json.loads(json.dumps(data).replace(HEAD, NEXT).replace(HEAD[:7], NEXT[:7]))
+        history = data["graph"]["comments"][1]["userContentEdits"]["nodes"]
+        history[1]["diff"] = prior_finding
+        set_body(data, 1, "<!-- pr-lens:sticky -->\n<!-- pr-lens:drawing -->")
+        result = evaluate(data, 42)
+        self.assertEqual(result.reason, "pr_lens_findings")
+        self.assertEqual(result.head, NEXT)
+
+    def test_verified_clean_rereview_can_address_retained_lens_finding(self):
+        data = fixture()
+        history = data["graph"]["comments"][1]["userContentEdits"]
+        history["nodes"].append(dict(history["nodes"][1], diff=lens_finding_body(),
+                                     editedAt="2026-11-05T12:50:00Z"))
+        history["totalCount"] += 1
+        self.assertTrue(evaluate(data, 42).eligible)
+
+    def test_untrusted_edit_cannot_erase_retained_authenticated_lens_finding(self):
+        data = fixture()
+        node = data["graph"]["comments"][1]
+        history = node["userContentEdits"]["nodes"]
+        history[1]["diff"] = lens_finding_body()
+        set_body(data, 1, "<!-- pr-lens:sticky -->\n<!-- pr-lens:drawing -->")
+        node["editor"] = history[0]["editor"] = {"__typename": "User", "databaseId": 100}
+        self.assert_blocked(data, "pr_lens_findings")
+
+    def test_pr_lens_empty_submission_with_resolved_threads_is_advisory(self):
+        data = fixture()
+        author = data["graph"]["comments"][1]["author"]
+        data["graph"]["pull"]["reviews"] = connection([
+            {"id": "PRR_lens", "author": author, "state": "COMMENTED", "commit": {"oid": HEAD},
+             "body": ""},
+        ])
+        self.assertTrue(evaluate(data, 42).eligible)
+
+    def test_minimized_lens_issue_comment_remains_a_finding(self):
+        data = fixture()
+        rest, graph = comment("IC_hidden", 812, 320153949, "coldtea-pr-lens[bot]",
+                              4690539, "<!-- pr-lens:finding e30= -->")
+        graph["isMinimized"] = True
+        data["comments"].append(rest)
+        data["graph"]["comments"].append(graph)
+        self.assert_blocked(data, "pr_lens_findings")
+
+    def test_minimized_dismissed_or_edited_lens_report_remains_a_finding(self):
+        for mode in ("minimized", "dismissed", "edited"):
+            with self.subTest(mode=mode):
+                data = fixture()
+                author = data["graph"]["comments"][1]["author"]
+                body = "<!-- pr-lens:finding e30= -->"
+                review = {"id": "PRR_lens", "author": author, "state": "COMMENTED",
+                          "commit": {"oid": HEAD}, "body": body, "isMinimized": False,
+                          "submittedAt": TIME, "editor": None, "lastEditedAt": None,
+                          "includesCreatedEdit": False, "userContentEdits": connection([])}
+                if mode == "minimized":
+                    review["isMinimized"] = True
+                elif mode == "dismissed":
+                    review["state"] = "DISMISSED"
+                else:
+                    review.update(body="", editor=author, lastEditedAt=TIME, includesCreatedEdit=True)
+                    review["userContentEdits"] = connection([
+                        {"editor": author, "editedAt": TIME, "deletedAt": None, "diff": body},
+                    ])
+                data["graph"]["pull"]["reviews"] = connection([review])
+                self.assert_blocked(data, "pr_lens_findings")
+
+    def test_resolved_inline_finding_during_rereview_stays_blocking(self):
+        for published, blocked in (("2026-11-05T12:50:00Z", False), (PENDING_TIME, True),
+                                   ("2026-11-05T12:58:00Z", True), ("2026-11-05T13:00:00Z", True)):
+            with self.subTest(published=published):
+                data = fixture()
+                author = data["graph"]["comments"][1]["author"]
+                inline = {"id": "PRRC_lens", "author": author, "state": "SUBMITTED",
+                          "body": "<!-- pr-lens:finding e30= -->", "publishedAt": published,
+                          "editor": None, "lastEditedAt": None, "includesCreatedEdit": False,
+                          "userContentEdits": connection([])}
+                data["graph"]["pull"]["reviewThreads"] = connection([
+                    {"id": "RT_lens", "isResolved": True, "comments": connection([inline])},
+                ])
+                self.assertEqual(evaluate(data, 42).reason, "pr_lens_findings" if blocked else "eligible")
 
     def test_missing_spoofed_or_malformed_evidence(self):
         data = fixture()

@@ -68,3 +68,27 @@ Review the implementation and authorize any merge separately. If a sandbox
 pilot is desired, identify the disposable repository, PR, head and target
 branch, review the pinned adapter and App permissions, and authorize a bounded
 advisory publication. Retain manual verification at the merge decision.
+
+
+## November 5 follow-up on PR #17
+
+The owner made PR Lens advisory. The current policy requires authenticated,
+completed Codex review on the exact head, required CI and resolved conversations.
+PR Lens rendered the previous head without an authenticated terminal review or
+skip. A missing verdict stays advisory. Verified unresolved findings block.
+
+The evaluator now preserves known bot-authored findings from retained comment
+and review history and supports an exact-diff disposition by the pinned owner.
+The simulator reserves invocation generations before its first read. Timestamps
+compare timezone-aware instants. A missing required Codex comment after a
+successful collection reaches terminal simulated failure on a stable scope.
+
+Independent review found gaps in malformed timezone handling and retained
+finding coverage for minimized or edited evidence and resolved inline threads.
+The corrections preserve findings published at or after an authenticated
+re-review begins. The independent recheck found no actionable blockers.
+All 54 focused and 172 total tests passed.
+
+Keep PR #17 Ready for Review. Confirm fresh Codex and CI on the published
+revision, and obtain separate owner authorization for any merge. A live
+sandbox needs a durable evidence ledger and separate authorization.

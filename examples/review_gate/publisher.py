@@ -31,6 +31,7 @@ class SandboxPublisher:
         self.max_writes = max_writes
         self._lock = Lock()
         self._generations = {}
+        self._invocations = {}
         self._owners = {}
         self._visible = {}
         self._confirmed = {}
@@ -67,6 +68,8 @@ class SandboxPublisher:
         # Even an out-of-scope PR invalidates its local receipt. No native
         # status is revoked by this step, which models the external gap.
         with self._lock:
+            invocation = self._invocations.get(number, 0) + 1
+            self._invocations[number] = invocation
             for head, owner in self._owners.items():
                 if owner[1] == number:
                     self._confirmed.pop(head, None)
@@ -78,6 +81,7 @@ class SandboxPublisher:
             scope = decision.evidence["pr"]
             request = commit_status(head, state, decision)
             with self._lock:
+                require(self._invocations[number] == invocation, "sandbox_publication_superseded")
                 owner = (scope["id"], scope["number"])
                 if state == "pending":
                     require(self._owners.get(head, owner) == owner, "sandbox_shared_head")

@@ -1,6 +1,7 @@
 """Evaluate authenticated GitHub evidence without running PR code."""
 
 from dataclasses import dataclass, field
+from datetime import datetime
 import hashlib
 import json
 import re
@@ -17,8 +18,8 @@ ACTIONS_APP = 15368
 CODEX = (199175422, "chatgpt-codex-connector", 1144995)
 PR_LENS = (320153949, "coldtea-pr-lens", 4690539)
 DISPOSITION_OWNER = 8781658
-DISPOSITION_MARKER = "ai-review-gate-disposition:v1"
-DISPOSITION_ACCEPT = "I accept the intentional PR Lens skip for this revision."
+DISPOSITION_MARKER = "ai-review-gate-findings-disposition:v1"
+DISPOSITION_ACCEPT = "I disposition the recorded PR Lens findings for this revision."
 LENS_SKIP = """<!-- pr-lens:sticky -->
 
 > [!NOTE]
@@ -39,6 +40,17 @@ class Blocked(ValueError):
 def require(condition, reason):
     if not condition:
         raise Blocked(reason)
+
+
+def timestamp(value, reason):
+    require(isinstance(value, str) and re.fullmatch(
+        r"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}"
+        r"(?:\.[0-9]{1,6})?(?:Z|[+-](?:[01][0-9]|2[0-3]):[0-5][0-9])", value,
+    ), reason)
+    try:
+        return datetime.fromisoformat(value.removesuffix("Z") + "+00:00" if value.endswith("Z") else value)
+    except ValueError:
+        raise Blocked(reason) from None
 
 
 def strict_json(text):
@@ -126,19 +138,15 @@ def graph_bot(actor, identity):
 
 
 def review_comments(comments):
-    """Select the two authoritative comments before requesting edit history."""
-    selected = []
-    for name, identity, hint in (
-        ("codex", CODEX, "codex-review-state:"),
-        ("pr_lens", PR_LENS, "<!-- pr-lens:sticky -->"),
-    ):
-        matches = [
-            item for item in rows(comments) if rest_bot(item, identity)
-            and isinstance(item.get("body"), str) and hint in item["body"]
-        ]
-        require(len(matches) == 1, f"{name}_comment_missing_or_ambiguous")
-        selected.append(matches[0])
-    return selected
+    """Separate required Codex summaries from advisory PR Lens comments."""
+    codex, lens = [], []
+    for item in rows(comments):
+        if (rest_bot(item, CODEX) and isinstance(item.get("body"), str)
+                and "codex-review-state:" in item["body"]):
+            codex.append(item)
+        elif rest_bot(item, PR_LENS):
+            lens.append(item)
+    return codex, lens
 
 
 def comment_proof(comment, nodes, identity, name):
@@ -189,7 +197,7 @@ def codex_review(body, head):
     require(review["commit_sha"] == head, "codex_stale")
     require(review.get("status") == "completed", "codex_incomplete")
     require(
-        review.get("has_any_findings") is False and review.get("has_unresolved_findings") is False,
+        type(review.get("has_any_findings")) is bool and review.get("has_unresolved_findings") is False,
         "codex_findings",
     )
     if "security_review" in state:
@@ -198,7 +206,7 @@ def codex_review(body, head):
         require(type(security) is dict and set(security) == keys, "codex_security_incomplete")
         if not all(value is None for value in security.values()):
             require(security["commit_sha"] == head and security["status"] == "completed"
-                    and security["has_any_findings"] is False
+                    and type(security["has_any_findings"]) is bool
                     and security["has_unresolved_findings"] is False, "codex_security_incomplete")
 
 
@@ -226,7 +234,8 @@ def lens_review(node, head, number):
     # bot-authored version for that full SHA actually transitioned to clean.
     reason = "pr_lens_review_transition_unverified"
     history = node["userContentEdits"]["nodes"]
-    require(len(history) >= 2 and history[0]["editedAt"] > history[1]["editedAt"]
+    require(len(history) >= 2
+            and timestamp(history[0]["editedAt"], reason) > timestamp(history[1]["editedAt"], reason)
             and all(isinstance(edit["diff"], str) for edit in history), reason)
     prior = history[1]["diff"]
     try:
@@ -256,9 +265,9 @@ def review_proof(pull, head):
         require(graph_bot(actor, identity) and sha(commit), "reviews_incomplete")
         # Observed clean reviews use sticky summaries. A separate same-head
         # bot submission might be a finding that has not reached the summary.
-        require(commit != head, "reviewer_submission_requires_disposition")
+        require(identity != CODEX or commit != head, "reviewer_submission_requires_disposition")
         relevant.append(review)
-    return fingerprint(sorted(relevant, key=lambda review: review["id"]))
+    return sorted(relevant, key=lambda review: review["id"])
 
 
 def passed_check(checks, name, app_id, head, reason):
@@ -304,31 +313,134 @@ def ci_proof(snapshot, scope, checks):
             "jobs": [job["id"] for job in jobs], "sha256": fingerprint([run, jobs])}
 
 
-def intentional_skip(snapshot, scope, lens, lens_proof, reviews, checks, proof):
-    require(not any(check["name"] == "PR Lens" or check["app"]["id"] == PR_LENS[2]
-                    for check in checks), "pr_lens_skip_contradicts_check")
-    require(not any(comment["id"] != lens["id"] for comment in snapshot["comments"]
-                    if rest_bot(comment, PR_LENS)), "pr_lens_skip_history_ambiguous")
+def lens_finding(body):
+    """Recognize observed provider findings without executing their contents."""
+    return isinstance(body, str) and (re.search(
+        r"^\*\*Review\*\*\n\n<details>\n<summary><b>[1-9][0-9]* findings?</b>"
+        r"(?: on the diff)? · reviewed <code>[0-9a-f]{7,40}</code></summary>$", body, re.M,
+    ) or re.search(r"^<!-- pr-lens:finding [A-Za-z0-9+/=_-]+ -->$", body, re.M))
+
+
+def lens_clean_proof(comment, node, scope, checks):
+    """Drawing success corroborates a review section, never replaces it."""
+    head, number = scope["head"], scope["number"]
+    pending_at = lens_review(node, head, number)
+    check = passed_check(checks, "PR Lens", PR_LENS[2], head, "pr_lens_check_incomplete")
+    require(check["details_url"] == f"https://github.com/{REPOSITORY}/pull/{number}"
+            f"#issuecomment-{comment['id']}", "pr_lens_check_not_linked")
+    reason = "pr_lens_check_transition_mismatch"
+    started = timestamp(pending_at, reason)
+    require(timestamp(check["completed_at"], reason) == started, reason)
+    return {"id": check["id"], "sha256": fingerprint(check)}, started
+
+
+def lens_versions(node, published_at):
+    """Read bot-authored versions even if a finding was minimized or edited."""
+    if not graph_bot(node.get("author"), PR_LENS):
+        return
+    edits = node.get("userContentEdits")
+    history = edits.get("nodes") if isinstance(edits, dict) else None
+    if (history == [] and edits.get("totalCount") == 0
+            and (edits.get("pageInfo") or {}).get("hasNextPage") is False
+            and node.get("lastEditedAt") is None and node.get("editor") is None
+            and node.get("includesCreatedEdit") is False):
+        yield node.get("body"), published_at
+    if isinstance(history, list):
+        for edit in history:
+            if (isinstance(edit, dict) and graph_bot(edit.get("editor"), PR_LENS)
+                    and "deletedAt" in edit and edit["deletedAt"] is None):
+                yield edit.get("diff"), edit.get("editedAt")
+
+
+def lens_advisory(comments, nodes, reviews, inline, scope, checks):
+    observations, findings = [], []
+    clean_started_at = None
+
+    def record(kind, identity, body, seen_at, superseded_at=None):
+        observed = timestamp(seen_at, "pr_lens_finding_timestamp_invalid")
+        if superseded_at is not None and observed < superseded_at:
+            return
+        entry = {"kind": kind, "id": identity, "sha256": fingerprint(body), "seen_at": seen_at}
+        if entry not in findings:
+            findings.append(entry)
+
+    for comment in sorted(comments, key=lambda item: item["id"]):
+        body = comment.get("body")
+        matches = [node for node in nodes if node["id"] == comment.get("node_id")]
+        node = matches[0] if len(matches) == 1 else {}
+        observation = {"id": comment["id"], "outcome": "unknown"}
+        verified_at = None
+        try:
+            observation.update(comment_proof(comment, nodes, PR_LENS, "pr_lens"))
+            if lens_finding(body):
+                observation["outcome"] = "findings"
+            elif body.rstrip("\n") == LENS_SKIP:
+                observation["outcome"] = "intentional_skip"
+            else:
+                try:
+                    observation["check"], verified_at = lens_clean_proof(comment, node, scope, checks)
+                    observation["outcome"] = "reviewed_clean"
+                except (Blocked, AttributeError, KeyError, TypeError, ValueError):
+                    observation["outcome"] = (
+                        "incomplete" if re.search(r"^\*\*Reviewing |^> Reviewing ", body, re.M)
+                        or ("pr-lens:drawing" in body and "**Review**" not in body) else "unknown"
+                    )
+        except (Blocked, AttributeError, KeyError, TypeError, ValueError):
+            pass
+        observations.append(observation)
+
+        if observation["outcome"] == "findings":
+            record("comment", comment["id"], body, comment["updated_at"])
+        if len(comments) == 1:
+            clean_started_at = verified_at
+        # GitHub retains attributed versions when a sticky is edited or
+        # minimized. Read them separately from the stricter clean proof.
+        for version, seen_at in lens_versions(node, node.get("createdAt")):
+            if lens_finding(version):
+                record("comment", comment["id"], version, seen_at, clean_started_at)
+
+    for review in reviews:
+        if not graph_bot(review["author"], PR_LENS) or review["state"] == "PENDING":
+            continue
+        if review["state"] == "CHANGES_REQUESTED":
+            record("review", review["id"], review, review["submittedAt"])
+        for version, seen_at in lens_versions(review, review.get("submittedAt")):
+            if lens_finding(version):
+                record("review", review["id"], version, seen_at, clean_started_at)
+
+    for comment in inline:
+        if comment["state"] == "PENDING":
+            continue
+        for version, seen_at in lens_versions(comment, comment.get("publishedAt")):
+            if lens_finding(version):
+                record("inline", comment["id"], version, seen_at, clean_started_at)
+
+    outcome = "findings" if findings else (
+        observations[0]["outcome"] if len(observations) == 1 else "unknown"
+    )
+    return outcome, observations, sorted(findings, key=fingerprint)
+
+
+def findings_disposition(snapshot, scope, findings, reviews, proof):
+    if "changes" not in snapshot:
+        return "pr_lens_findings"
     try:
         category, merge_base, entries = verified_changes(
             snapshot["changes"], scope, snapshot["pull"]["changed_files"],
         )
     except (AttributeError, KeyError, TypeError, ValueError):
         raise Blocked("change_evidence_invalid") from None
-    proof["pr_lens_outcome"] = "intentional_skip"
     proof["changes"] = {"class": category, "merge_base": merge_base,
                         "files": snapshot["pull"]["changed_files"], "sha256": fingerprint(entries)}
-    if category == "executable_or_mixed":
-        return "pr_lens_skip_not_permitted"
     require(snapshot["pull"]["base"]["repo"]["owner"]["id"] == DISPOSITION_OWNER,
             "disposition_owner_unverified")
 
     request = {
-        "decision": "accept_intentional_skip", "repository_id": REPO_ID,
+        "decision": "disposition_pr_lens_findings", "repository_id": REPO_ID,
         "pr_id": scope["id"], "pr_number": scope["number"], "target_branch": BASE_REF,
         "head": scope["head"], "base_tip": scope["base_tip"], "merge_base": merge_base,
         "change_class": category, "files_sha256": proof["changes"]["sha256"],
-        "notice_id": lens_proof["id"], "notice_sha256": lens_proof["sha256"],
+        "findings": findings,
     }
     candidates = []
     for review in reviews:
@@ -340,29 +452,29 @@ def intentional_skip(snapshot, scope, lens, lens_proof, reviews, checks, proof):
         parts = body.split("\n\n", 2)
         require(len(parts) == 3 and parts[0] == DISPOSITION_ACCEPT
                 and "\n" not in parts[1] and parts[2].strip()
-                and body.count(DISPOSITION_MARKER) == 1, "skip_disposition_invalid")
-        submitted_request = marker(parts[1], DISPOSITION_MARKER, "skip_disposition_invalid")
-        require(set(submitted_request) == set(request), "skip_disposition_invalid")
-        # Preserve old reviews in the audit trail. An older base, diff or
-        # notice may require a new disposition for the same head.
+                and body.count(DISPOSITION_MARKER) == 1, "findings_disposition_invalid")
+        submitted_request = marker(parts[1], DISPOSITION_MARKER, "findings_disposition_invalid")
+        require(set(submitted_request) == set(request), "findings_disposition_invalid")
         if submitted_request == request:
             candidates.append(review)
     if not candidates:
         proof["disposition_request"] = request
-        return "pr_lens_skip_requires_disposition"
-    require(len(candidates) == 1, "skip_disposition_invalid")
+        return "pr_lens_findings"
+    require(len(candidates) == 1, "findings_disposition_invalid")
     review = candidates[0]
-    submitted = review["submittedAt"]
+    reason = "findings_disposition_invalid"
+    submitted = timestamp(review["submittedAt"], reason)
     require(
         review["author"]["__typename"] == "User" and review["state"] == "COMMENTED"
-        and isinstance(submitted, str) and submitted > lens["updated_at"]
+        and all(submitted > timestamp(finding["seen_at"], reason) for finding in findings)
         and review["lastEditedAt"] is None and review["editor"] is None
         and review["isMinimized"] is False and review["includesCreatedEdit"] is False
-        and not connection(review["userContentEdits"], "skip_disposition_invalid"),
-        "skip_disposition_invalid",
+        and not connection(review["userContentEdits"], reason),
+        reason,
     )
     proof["disposition"] = {"review": review["id"], "actor_id": DISPOSITION_OWNER,
                             "sha256": fingerprint(review), "scope": request}
+    proof["pr_lens_outcome"] = "findings_dispositioned"
     return "eligible"
 
 
@@ -408,40 +520,32 @@ def evaluate(snapshot, number):
         require(all(thread["isResolved"] is True for thread in threads), "unresolved_review_thread")
         require(all(isinstance(thread["id"], str) and thread["id"] for thread in threads)
                 and len({thread["id"] for thread in threads}) == len(threads), "review_threads_incomplete")
-        reviews_digest = review_proof(pull, head)
+        inline = [comment for thread in threads
+                  for comment in connection(thread["comments"], "review_threads_incomplete")]
+        reviews = review_proof(pull, head)
 
-        codex, lens = review_comments(snapshot["comments"])
-        nodes = rows(graph["comments"])
+        codex_comments, lens_comments = review_comments(snapshot["comments"])
+        require(len(codex_comments) == 1, "codex_comment_missing_or_ambiguous")
+        codex = codex_comments[0]
+        # GraphQL returns null when a comment disappears between REST and
+        # GraphQL. A missing required Codex node still fails its proof.
+        require(type(graph["comments"]) is list, "evidence_unavailable")
+        nodes = rows([node for node in graph["comments"] if node is not None])
         codex_proof = comment_proof(codex, nodes, CODEX, "codex")
-        lens_proof = comment_proof(lens, nodes, PR_LENS, "pr_lens")
         codex_review(codex["body"], head)
         checks = rows(snapshot["checks"])
+        ci = ci_proof(snapshot, scope, checks)
+        outcome, lens_proof, findings = lens_advisory(lens_comments, nodes, reviews, inline, scope, checks)
         proof = {
             "pr": scope, "codex": codex_proof, "pr_lens": lens_proof,
-            "review_decision": pull["reviewDecision"], "review_submissions_sha256": reviews_digest,
+            "pr_lens_outcome": outcome, "pr_lens_findings": findings, "ci": ci,
+            "review_decision": pull["reviewDecision"], "review_submissions_sha256": fingerprint(reviews),
             "threads": sorted(t["id"] for t in threads),
         }
-        if lens["body"].rstrip("\n") == LENS_SKIP:
-            lens_node = next(node for node in nodes if node["id"] == lens["node_id"])
-            require(lens_node["lastEditedAt"] is None, "pr_lens_skip_history_ambiguous")
-            proof["ci"] = ci_proof(snapshot, scope, checks)
-            reason = intentional_skip(snapshot, scope, lens, lens_proof,
-                                      pull["reviews"]["nodes"], checks, proof)
-            return Decision(reason, head, fingerprint(proof), proof)
-
-        lens_node = next(node for node in nodes if node["id"] == lens["node_id"])
-        lens_pending_at = lens_review(lens_node, head, number)
-        lens_check = passed_check(checks, "PR Lens", PR_LENS[2], head, "pr_lens_check_incomplete")
-        require(
-            lens_check["details_url"] == f"https://github.com/{REPOSITORY}/pull/{number}"
-            f"#issuecomment-{lens['id']}",
-            "pr_lens_check_not_linked",
-        )
-        require(lens_check["completed_at"] == lens_pending_at, "pr_lens_check_transition_mismatch")
-        proof["pr_lens_outcome"] = "reviewed_clean"
-        proof["pr_lens_check"] = {"id": lens_check["id"], "sha256": fingerprint(lens_check)}
-        proof["ci"] = ci_proof(snapshot, scope, checks)
-        return Decision("eligible", head, fingerprint(proof), proof)
+        reason = "eligible"
+        if findings:
+            reason = findings_disposition(snapshot, scope, findings, pull["reviews"]["nodes"], proof)
+        return Decision(reason, head, fingerprint(proof), proof)
     except Blocked as error:
         return Decision(error.args[0])
     except (AttributeError, KeyError, TypeError, ValueError):

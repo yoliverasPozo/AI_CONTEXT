@@ -2,9 +2,9 @@ import copy
 import json
 import unittest
 
-from examples.review_gate.evaluator import DISPOSITION_ACCEPT, evaluate
+from examples.review_gate.evaluator import DISPOSITION_ACCEPT, DISPOSITION_MARKER, evaluate
 from examples.review_gate.publisher import SandboxPublisher
-from tests.test_ai_review_gate import BASE, HEAD, NEXT, TIME, connection, fixture, marker, set_body
+from tests.test_ai_review_gate import BASE, HEAD, NEXT, TIME, connection, fixture, lens_finding_body, marker, set_body
 
 
 SKIP = """<!-- pr-lens:sticky -->
@@ -55,53 +55,51 @@ def attest(data, payload, owner=8781658):
               "lastEditedAt": None, "editor": None, "isMinimized": False,
               "includesCreatedEdit": False, "userContentEdits": connection([]),
               "body": DISPOSITION_ACCEPT + "\n\n"
-              + marker("ai-review-gate-disposition:v1", payload) + "\n\nReviewed the diff."}
+              + marker(DISPOSITION_MARKER, payload) + "\n\nReviewed the diff."}
     data["graph"]["pull"]["reviews"] = connection([review])
     return review
 
 
-class SkipTests(unittest.TestCase):
-    def test_ordinary_docs_skip_needs_exact_disposition(self):
-        data = skip_fixture()
-        decision = evaluate(data, 42)
-        self.assertEqual(decision.reason, "pr_lens_skip_requires_disposition")
-        self.assertEqual(decision.evidence["changes"]["class"], "ordinary_documentation")
-        self.assertFalse(decision.eligible)
-        attest(data, decision.evidence["disposition_request"])
-        self.assertTrue(evaluate(data, 42).eligible)
+def finding_fixture(paths=("CHANGELOG.md",)):
+    data = skip_fixture(paths)
+    set_body(data, 1, lens_finding_body())
+    return data
 
-    def test_pr16_notice_is_sensitive_and_needs_human_disposition(self):
+
+class AdvisoryTests(unittest.TestCase):
+    def test_pr16_notice_is_advisory_without_a_waiver(self):
         head = "93fdc2427aaa32af51fca442034436f065b8b5c2"
         data = json.loads(json.dumps(skip_fixture(PR16_PATHS)).replace(HEAD, head))
         data["pull"].update(number=16, id=5173385648, node_id="PR_kwDOUHmmcs8AAAABNFuZsA")
         data["open_pulls"] = [copy.deepcopy(data["pull"])]
         data["graph"]["pull"]["id"] = data["pull"]["node_id"]
+        del data["changes"]
         decision = evaluate(data, 16)
-        self.assertEqual(decision.reason, "pr_lens_skip_requires_disposition")
-        self.assertEqual(decision.evidence["changes"]["class"], "sensitive_documentation")
-        self.assertEqual(decision.evidence["changes"]["files"], 11)
-        self.assertFalse(decision.eligible)
-        attest(data, decision.evidence["disposition_request"])
-        self.assertEqual(decision.evidence["disposition_request"]["head"], head)
-        self.assertTrue(evaluate(data, 16).eligible)
+        self.assertTrue(decision.eligible)
+        self.assertEqual(decision.evidence["pr_lens_outcome"], "intentional_skip")
+        self.assertNotIn("disposition", decision.evidence)
 
-    def test_code_mixed_workflow_or_executable_doc_cannot_use_skip(self):
-        for paths, executable in (
-            (("src/example.py",), False),
-            (("CHANGELOG.md", "src/example.py"), False),
-            ((".github/workflows/tests.yml",), False),
-            (("CHANGELOG.md",), True),
+    def test_known_findings_require_disposition_in_each_change_class(self):
+        for paths, category in (
+            (("CHANGELOG.md",), "ordinary_documentation"),
+            (PR16_PATHS, "sensitive_documentation"),
+            (("CHANGELOG.md", "src/example.py"), "executable_or_mixed"),
         ):
-            with self.subTest(paths=paths, executable=executable):
-                data = skip_fixture(paths)
-                if executable:
-                    data["changes"]["head_tree"]["tree"][0]["mode"] = "100755"
-                self.assertEqual(evaluate(data, 42).reason, "pr_lens_skip_not_permitted")
+            with self.subTest(category=category):
+                data = finding_fixture(paths)
+                decision = evaluate(data, 42)
+                self.assertEqual(decision.reason, "pr_lens_findings")
+                self.assertEqual(decision.evidence["changes"]["class"], category)
+                self.assertFalse(decision.eligible)
+                attest(data, decision.evidence["disposition_request"])
+                result = evaluate(data, 42)
+                self.assertTrue(result.eligible)
+                self.assertEqual(result.evidence["pr_lens_outcome"], "findings_dispositioned")
 
-    def test_unknown_or_incomplete_diff_blocks_skip(self):
+    def test_unknown_or_incomplete_diff_blocks_disposition(self):
         for case in ("truncated", "omitted", "wrong_head", "wrong_blob", "wrong_base"):
             with self.subTest(case=case):
-                data = skip_fixture()
+                data = finding_fixture()
                 if case == "truncated":
                     data["changes"]["head_tree"]["truncated"] = True
                 elif case == "omitted":
@@ -117,21 +115,21 @@ class SkipTests(unittest.TestCase):
                 self.assertEqual(evaluate(data, 42).reason, "change_evidence_invalid")
 
     def test_renaming_sensitive_instruction_into_ordinary_path_stays_sensitive(self):
-        data = skip_fixture()
+        data = finding_fixture()
         data["changes"]["base_tree"]["tree"][0]["path"] = "AGENTS.md"
         data["changes"]["files"][0].update(status="renamed", previous_filename="AGENTS.md")
         result = evaluate(data, 42)
         self.assertEqual(result.evidence["changes"]["class"], "sensitive_documentation")
 
     def test_disposition_cannot_be_spoofed_edited_or_reused(self):
-        for case in ("wrong_owner", "edited", "wrong_head", "wrong_diff", "wrong_notice"):
+        for case in ("wrong_owner", "edited", "wrong_head", "wrong_diff", "wrong_findings"):
             with self.subTest(case=case):
-                data = skip_fixture()
+                data = finding_fixture()
                 request = copy.deepcopy(evaluate(data, 42).evidence["disposition_request"])
                 if case == "wrong_diff":
                     request["files_sha256"] = "0" * 64
-                if case == "wrong_notice":
-                    request["notice_sha256"] = "0" * 64
+                if case == "wrong_findings":
+                    request["findings"][0]["sha256"] = "0" * 64
                 review = attest(data, request, 23 if case == "wrong_owner" else 8781658)
                 if case == "edited":
                     review["lastEditedAt"] = TIME
@@ -139,32 +137,40 @@ class SkipTests(unittest.TestCase):
                     review["commit"]["oid"] = NEXT
                 self.assertFalse(evaluate(data, 42).eligible)
 
-    def test_skip_preserves_provenance_codex_ci_and_conversation_requirements(self):
+    def test_disposition_timestamps_are_parsed_and_compared_with_offsets(self):
+        for submitted, eligible in (
+            ("invalid-timestamp", False),
+            ("2026-11-05T13:10:00", False),
+            ("2026-11-05T14:30:00+00:60", False),
+            ("2026-11-05T12:59:33Z", False),
+            ("2026-11-05T13:10:00+01:00", False),
+            ("2026-11-05T09:01:00-04:00", True),
+        ):
+            with self.subTest(submitted=submitted):
+                data = finding_fixture()
+                review = attest(data, evaluate(data, 42).evidence["disposition_request"])
+                review["submittedAt"] = submitted
+                self.assertEqual(evaluate(data, 42).eligible, eligible)
+
+    def test_disposition_preserves_codex_ci_and_conversation_requirements(self):
         for case, reason in (
-            ("spoof", "pr_lens_comment_missing_or_ambiguous"),
-            ("codex", "codex_stale"),
-            ("ci", "ci_checks_incomplete"),
+            ("codex", "codex_stale"), ("ci", "ci_checks_incomplete"),
             ("thread", "unresolved_review_thread"),
-            ("contradiction", "pr_lens_skip_contradicts_check"),
         ):
             with self.subTest(case=case):
-                data = skip_fixture()
+                data = finding_fixture()
                 attest(data, evaluate(data, 42).evidence["disposition_request"])
-                if case == "spoof":
-                    data["comments"][1]["performed_via_github_app"]["id"] = 12
-                elif case == "codex":
+                if case == "codex":
                     original = data["comments"][0]["body"]
                     set_body(data, 0, original.replace(HEAD, NEXT))
                 elif case == "ci":
                     data["checks"][0]["conclusion"] = "failure"
-                elif case == "thread":
-                    data["graph"]["pull"]["reviewThreads"] = connection([{"id": "RT", "isResolved": False}])
                 else:
-                    data["checks"].append(fixture()["checks"][-1])
+                    data["graph"]["pull"]["reviewThreads"] = connection([{"id": "RT", "isResolved": False}])
                 self.assertEqual(evaluate(data, 42).reason, reason)
 
     def test_disposition_receipt_is_not_rebound_to_another_base(self):
-        data = skip_fixture()
+        data = finding_fixture()
         same_head_other_base = copy.deepcopy(data["pull"])
         same_head_other_base["base_tip"] = NEXT
         publisher = SandboxPublisher(501, enabled=True)
@@ -173,19 +179,14 @@ class SkipTests(unittest.TestCase):
         self.assertNotIn("disposition_request", result.evidence)
         self.assertEqual(publisher.visible(HEAD).request["body"]["state"], "pending")
 
-    def test_additional_authentic_lens_comment_is_ambiguous(self):
-        data = skip_fixture()
-        data["comments"].append(dict(data["comments"][1], id=812, body="Additional reviewer output"))
-        self.assertEqual(evaluate(data, 42).reason, "pr_lens_skip_history_ambiguous")
-
     def test_base_advance_requires_new_disposition_without_discarding_old_review(self):
-        data = skip_fixture()
+        data = finding_fixture()
         old = attest(data, evaluate(data, 42).evidence["disposition_request"])
         self.assertTrue(evaluate(data, 42).eligible)
         data["pull"]["base_tip"] = NEXT
         data["changes"]["comparison"]["base_commit"]["sha"] = NEXT
         result = evaluate(data, 42)
-        self.assertEqual(result.reason, "pr_lens_skip_requires_disposition")
+        self.assertEqual(result.reason, "pr_lens_findings")
         self.assertEqual(result.evidence["disposition_request"]["base_tip"], NEXT)
         new = attest(data, result.evidence["disposition_request"])
         new["id"] = "PRR_owner_new"
@@ -193,8 +194,8 @@ class SkipTests(unittest.TestCase):
         self.assertTrue(evaluate(data, 42).eligible)
 
     def test_quoting_disposition_marker_does_not_express_acceptance(self):
-        data = skip_fixture()
+        data = finding_fixture()
         payload = evaluate(data, 42).evidence["disposition_request"]
         review = attest(data, payload)
         review["body"] = "I am declining this request.\n\n```text\n" + review["body"] + "\n```"
-        self.assertEqual(evaluate(data, 42).reason, "pr_lens_skip_requires_disposition")
+        self.assertEqual(evaluate(data, 42).reason, "pr_lens_findings")

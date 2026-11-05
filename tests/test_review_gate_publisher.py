@@ -1,9 +1,11 @@
 import copy
+import json
 import unittest
 
 from examples.review_gate.evaluator import evaluate, event_candidates
+from examples.review_gate.github import GitHub
 from examples.review_gate.publisher import SandboxPublisher
-from tests.test_ai_review_gate import HEAD, NEXT, codex_body, connection, fixture, lens_body, set_body
+from tests.test_ai_review_gate import HEAD, NEXT, codex_body, comment, connection, fixture, set_body, lens_finding_body
 
 
 APP = 501
@@ -113,11 +115,9 @@ class PublisherTests(unittest.TestCase):
                 if change == "edited":
                     data["graph"]["comments"][0]["body"] += "\nUnexpected editor"
                 elif change == "deleted":
-                    data["comments"].pop()
+                    data["comments"].pop(0)
                 else:
-                    body = lens_body(review="<details>\n<summary><b>1 finding</b></summary>")
-                    set_body(data, 1, body)
-                    data["graph"]["comments"][1]["userContentEdits"]["nodes"][0]["diff"] = body
+                    set_body(data, 1, lens_finding_body())
                 self.assertEqual(state(publisher), "success")
                 self.assertIsNone(publisher.confirmed_for(evaluate(data, 42)))
                 self.assertFalse(run(publisher, data).eligible)
@@ -184,6 +184,64 @@ class PublisherTests(unittest.TestCase):
 
         result = publisher.run(42, old_read, lambda: older["pull"], actor_app_id=APP)
         self.assertEqual(result.reason, "sandbox_publication_superseded")
+        self.assertEqual(state(publisher), "failure")
+
+    def test_newer_failure_fences_older_invocation_before_pending(self):
+        publisher = SandboxPublisher(APP, enabled=True)
+        older, newer = fixture(), fixture()
+        findings(newer)
+
+        def old_initial_scope():
+            self.assertEqual(run(publisher, newer).reason, "codex_findings")
+            return older["pull"]
+
+        result = publisher.run(42, lambda: older, old_initial_scope, actor_app_id=APP)
+        self.assertEqual(result.reason, "sandbox_publication_superseded")
+        self.assertEqual(state(publisher), "failure")
+        self.assertIsNone(publisher.confirmed_for(evaluate(older, 42)))
+
+    def test_late_lens_finding_blocks_second_read_before_simulated_success(self):
+        publisher = SandboxPublisher(APP, enabled=True)
+        earlier, later = fixture(), fixture()
+        earlier["comments"].pop()
+        late_rest, late_graph = comment("IC_late", 812, 320153949, "coldtea-pr-lens[bot]",
+                                       4690539, "<!-- pr-lens:finding e30= -->")
+        later["comments"].append(late_rest)
+        later["graph"]["comments"].append(late_graph)
+        reads = iter([earlier, later])
+        result = publisher.run(42, lambda: next(reads), lambda: earlier["pull"], actor_app_id=APP)
+        self.assertEqual(result.reason, "pr_lens_findings")
+        self.assertEqual(state(publisher), "failure")
+
+    def test_missing_codex_comment_through_real_collector_publishes_failure(self):
+        data = fixture()
+        data["comments"].pop(0)
+        data["graph"]["comments"].pop(0)
+        prefix = "repos/yoliverasPozo/AI_CONTEXT/"
+        endpoints = {
+            "git/ref/heads/main": {"ref": "refs/heads/main",
+                                  "object": {"type": "commit", "sha": data["pull"]["base_tip"]}},
+            "pulls/42": data["pull"],
+            "issues/42/comments": data["comments"],
+            "pulls": data["open_pulls"],
+            f"commits/{HEAD}/check-runs": {"total_count": len(data["checks"]),
+                                          "check_runs": data["checks"]},
+            "actions/workflows/347167039/runs": {"total_count": len(data["runs"]),
+                                               "workflow_runs": data["runs"]},
+            "contents/.github/workflows/tests.yml": data["workflow_blobs"][0],
+        }
+
+        def request(endpoint, body=None):
+            if endpoint == "graphql":
+                self.assertEqual(json.loads(body)["variables"]["ids"], ["IC_lens"])
+                return {"data": {"repository": {"pull": data["graph"]["pull"]},
+                                 "comments": data["graph"]["comments"]}}
+            return endpoints[endpoint.removeprefix(prefix).split("?", 1)[0]]
+
+        api = GitHub(request=request)
+        publisher = SandboxPublisher(APP, enabled=True)
+        result = publisher.run(42, lambda: api.snapshot(42), lambda: api.pull(42), actor_app_id=APP)
+        self.assertEqual(result.reason, "codex_comment_missing_or_ambiguous")
         self.assertEqual(state(publisher), "failure")
 
     def test_review_can_change_after_last_evidence_read(self):

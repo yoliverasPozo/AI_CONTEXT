@@ -135,10 +135,11 @@ history. The repository is both a reusable reference and a live example.
 ## Active Work
 
 - PR #15 merged the read-only review observer and PR #16 merged the Ready for
-  Review convention. The compatibility follow-up verifies documentation skips
-  and models pending, success and failure without a network publisher. Native
-  enforcement remains unvalidated. See the [operating guide](AI_REVIEW_GATE.md)
-  and [session handoff](sessions/2026-11-05-review-gate-sandbox-readiness.md).
+  Review convention. PR #17 requires current-head Codex, CI and resolved
+  conversations. PR Lens is advisory, with verified unresolved findings still
+  blocking. The simulator has no network publisher. Native enforcement remains
+  unvalidated. See the [operating guide](AI_REVIEW_GATE.md) and
+  [session handoff](sessions/2026-11-05-review-gate-sandbox-readiness.md).
 
 - Writer PR11 is merged at `451c7c8c9315a59fdff838e37d6f9b6b80e1b5c6`.
   Diagnostic PR12 merged at `4e506b29ae458cb138b0b719d8cf9607e68deb5f`.

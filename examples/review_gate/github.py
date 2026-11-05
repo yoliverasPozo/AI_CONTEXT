@@ -8,7 +8,7 @@ from urllib.parse import urlencode
 from .changes import MAX_CHANGED_FILES
 
 from .evaluator import (
-    BASE_REF, LENS_SKIP, REPOSITORY, WORKFLOW, WORKFLOW_ID, Blocked, positive_id, pull_scope,
+    BASE_REF, REPOSITORY, WORKFLOW, WORKFLOW_ID, Blocked, evaluate, positive_id, pull_scope,
     require, review_comments, rows, sha, strict_json,
 )
 
@@ -23,7 +23,21 @@ query GateEvidence($owner: String!, $repo: String!, $number: Int!, $ids: [ID!]!)
     pull: pullRequest(number: $number) {
       id headRefOid baseRefOid reviewDecision
       reviewThreads(first: 100) {
-        totalCount pageInfo { hasNextPage } nodes { id isResolved }
+        totalCount pageInfo { hasNextPage }
+        nodes {
+          id isResolved
+          comments(first: 20) {
+            totalCount pageInfo { hasNextPage }
+            nodes {
+              id state body publishedAt author { ACTOR } editor { ACTOR }
+              lastEditedAt includesCreatedEdit
+              userContentEdits(first: 20) {
+                totalCount pageInfo { hasNextPage }
+                nodes { editor { ACTOR } editedAt deletedAt diff }
+              }
+            }
+          }
+        }
       }
       lifecycle: timelineItems(first: 1, itemTypes: [BASE_REF_CHANGED_EVENT,
           BASE_REF_FORCE_PUSHED_EVENT, HEAD_REF_FORCE_PUSHED_EVENT,
@@ -35,7 +49,10 @@ query GateEvidence($owner: String!, $repo: String!, $number: Int!, $ids: [ID!]!)
         nodes {
           id state submittedAt lastEditedAt isMinimized commit { oid } author { ACTOR }
           body editor { ACTOR } includesCreatedEdit
-          userContentEdits(first: 1) { totalCount pageInfo { hasNextPage } nodes { id } }
+          userContentEdits(first: 20) {
+            totalCount pageInfo { hasNextPage }
+            nodes { editor { ACTOR } editedAt deletedAt diff }
+          }
         }
       }
     }
@@ -123,7 +140,9 @@ class GitHub:
         scope = pull_scope(pull, number)
         head = scope["head"]
         comments = self.pages(f"issues/{number}/comments")
-        selected = review_comments(comments)
+        codex, lens = review_comments(comments)
+        selected = codex + lens
+        require(len(selected) <= 100, "review_comments_incomplete")
         owner, repo = REPOSITORY.split("/")
         response = self.request("graphql", json.dumps({
             "query": QUERY,
@@ -143,8 +162,13 @@ class GitHub:
             "workflow_blobs": [self.get(f"contents/{WORKFLOW}", ref=ref)
                                for ref in (scope["base_tip"], head)],
         }
-        if selected[1]["body"].rstrip("\n") == LENS_SKIP:
-            result["changes"] = self.changed_files(number, scope, pull["changed_files"])
+        if evaluate(result, number).reason == "pr_lens_findings":
+            try:
+                result["changes"] = self.changed_files(number, scope, pull["changed_files"])
+            except (Blocked, AttributeError, KeyError, TypeError, ValueError):
+                # The known finding remains a stable blocker when its
+                # optional disposition evidence cannot be collected.
+                pass
         return result
 
     def changed_files(self, number, scope, count):

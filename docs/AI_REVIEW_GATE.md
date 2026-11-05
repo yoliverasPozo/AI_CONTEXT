@@ -2,7 +2,7 @@
 
 The optional evaluator observes open, non-draft PRs from this repository into
 `main`. Its CLI prints a decision and a sanitized receipt. A passing receipt
-is a candidate for the future `AI review complete` status. Merge approval
+is a candidate for the future advisory `AI review complete` status. Merge approval
 continues to come from the owner.
 
 ```powershell
@@ -27,10 +27,10 @@ permissions were read and Actions review approval was disabled.
 
 | Source | GitHub identity | Required evidence |
 | --- | --- | --- |
-| Codex | App `1144995`, bot `199175422` | One authenticated summary with a version 1 code review record for the full head SHA, completed and both findings flags false. An active security review must also be current and clean. |
-| PR Lens | App `4690539`, bot `320153949` | An authenticated current-head clean review and matching drawing check, or a verified documentation skip with a current owner disposition. |
+| Codex | App `1144995`, bot `199175422` | One authenticated summary with a version 1 code review record for the full head SHA, completed, with no unresolved findings. An active security review must also be current and clean. |
+| PR Lens | App `4690539`, bot `320153949` | Advisory. A verified unresolved finding blocks. An absent, incomplete or stale verdict leaves PR Lens advisory and does not block by itself. |
 | Tests | GitHub Actions App `15368`, workflow `347167039` | The latest matching `pull_request` run for this head and branch is successful. All four expected jobs come from that run's suite. The workflow blob matches the current main tip. |
-| Conversations | GitHub GraphQL for the same PR and head | Every inline thread resolved, a complete review list and no blocking review decision. Separate same-head submissions from either bot block until disposition can be proven. |
+| Conversations | GitHub GraphQL for the same PR and head | Every inline thread resolved, a complete review list and no blocking review decision. Unverified same-head standalone Codex submissions block. Verified PR Lens findings are tracked separately from thread resolution. |
 
 PR #13 showed an unresolved Codex finding and a successful PR Lens check.
 PR #14 showed the transition from that distinction to a clean re-review on
@@ -49,86 +49,68 @@ same-repository PRs using `pull_request_target`. The gate ignores labels and
 handoff markers. A routing event or check cannot supply review evidence.
 [Handoff protocol](COORDINATION.md)
 
-## Trust and findings disposition
+## Review evidence and findings
 
-The collector joins REST App and bot IDs to the same GraphQL comment node,
-body and timestamps. It requires the original author and every visible
-editor to be the pinned bot. A minimized comment, unexpected editor, deleted
-edit, duplicate marker, truncated response or missing field blocks. On the
-observed PR Lens history, GraphQL's `diff` returned the full raw body of each
-revision. The evaluator requires that shape and rejects an observed collision
-between the abbreviated SHA and a different full SHA in the retained history.
-An editable Markdown body alone provides no proof of identity or review.
-These provider formats are empirical and can change. The publisher must stay
-inactive until an exact-head review contract or authenticated attestation has
-been validated. [GitHub comment schema](https://docs.github.com/en/graphql/reference/issues#issuecomment)
+Codex, all four required CI jobs and resolved conversations are mandatory.
+The collector joins the reviewer App and bot IDs to the corresponding GitHub
+GraphQL node, body and timestamps. Codex requires complete, unambiguous proof
+on the full head. A missing Codex comment blocks. A minimized comment,
+unexpected editor, duplicate marker or incomplete required history cannot
+satisfy the proof.
 
-For an actual review, require a clean, authenticated re-review on the current
-revision plus resolved inline conversations. The sticky comment must bind the
-pending-to-clean history to the full head and PR-specific graph key, and its
-drawing check must link to the comment and match the pending edit's timestamp.
-An unresolved finding
-blocks even if its thread is marked resolved. A current-head standalone
-bot review blocks because its findings may arrive before the sticky summary
-changes. Prior-head bot submissions can coexist with a clean current review
-after their conversations are resolved. The documentation skip described below
-does not waive findings. Any future finding waiver needs its own authenticated
-scope and individual finding IDs. A retained
-append-only ledger would detect changes or removals after the first observation.
-The GitHub snapshot cannot recover findings deleted before observation.
+PR Lens is advisory for ordinary documentation, sensitive documentation and
+code changes. The receipt distinguishes authenticated clean review,
+intentional skip, incomplete review, unknown evidence and known findings.
+An intentional skip such as [the notice on PR #16](https://github.com/yoliverasPozo/AI_CONTEXT/pull/16#issuecomment-6660777168)
+conveys that the provider skipped. A successful drawing check, silence or a
+prior-head verdict cannot establish a clean current review. An authenticated
+clean verdict must bind the PR-specific pending-to-clean history to the full
+head and a matching drawing check. Provider formats are empirical and can
+change. [GitHub comment schema](https://docs.github.com/en/graphql/reference/issues#issuecomment)
 
-## Intentional documentation skips
+The evaluator checks authenticated finding reports in issue comments,
+standalone reviews and inline review comments. It considers retained
+bot-authored versions even when a report was edited, minimized or dismissed.
+A resolved thread alone does not clear a verified finding. A verified clean
+current-head review can supersede reports strictly older than its authenticated
+pending marker. Reports during or after that review remain blockers. GitHub
+review decisions and unresolved threads remain independent blockers. A GitHub
+snapshot cannot recover a finding deleted before observation. A live pilot
+needs a durable evidence ledger to retain previously observed blockers.
 
-PR #16 changed 11 files, including agent instructions, packaged instructions,
-and the coordination guide. PR Lens posted an unedited skip notice without a
-SHA and created no check on that head. Codex completed a clean review and all
-four CI jobs passed. Historical replay with a simulated open scope and the
-pre-merge target tip classified the actual diff as sensitive documentation
-and required an owner disposition. The merged PR remains outside live scope.
-[PR Lens notice](https://github.com/yoliverasPozo/AI_CONTEXT/pull/16#issuecomment-6660777168)
-· [Codex review](https://github.com/yoliverasPozo/AI_CONTEXT/pull/16#issuecomment-6660779756)
+## Owner disposition of known findings
 
-For the exact observed notice, the observer verifies App, bot, original body
-and provenance. Edited notices, additional authenticated PR Lens comments
-and contradictory checks or submissions block. It reconciles the paginated
-PR file list with the immutable head and merge-base trees for the current
-target tip. Counts, paths, both rename endpoints, blob IDs and modes must agree.
-Truncation or unsupported metadata blocks. The most restrictive category
-applies across the entire diff.
+Address the finding and obtain verified clearing evidence, or have the owner
+review and explicitly disposition the exact known findings. The observer
+reconciles the complete PR file list against immutable head and merge-base
+trees for the current base tip before offering a disposition. Counts, paths,
+rename endpoints, blob IDs and modes must agree. The request records whether
+the diff is ordinary documentation, sensitive documentation, or executable or
+mixed. Only regular Markdown at reserved release-note paths qualifies as
+ordinary documentation. The classification records scope for human review
+and grants no automatic waiver.
 
-| Change class | Skip treatment |
-| --- | --- |
-| Ordinary documentation | Regular Markdown blobs at the reserved release-note paths `CHANGELOG.md` and `docs/release-notes/vX.Y.Z.md`. The owner confirms the content and binds the unversioned notice to this diff. |
-| Sensitive documentation | Other regular Markdown, including agent instructions, operational and security guidance, and gate policies. The owner reviews security and authority effects and records the reason for accepting the skip. |
-| Executable or mixed | Code, workflows, configuration, other file types, executable modes, symlinks and submodules require the full review path. |
-
-The path and mode checks establish where and how a file is stored. The owner
-reviews the content, including any security instructions placed in an otherwise
-ordinary path. Both eligible skip classes require clean Codex, CI and resolved
-conversations on the current head.
-
-When the observer returns `pr_lens_skip_requires_disposition`, the pinned
-repository owner can inspect the diff, notice and evidence. If the owner accepts
-the exception, submit a GitHub review with **Comment** on that head. Use the
-following three paragraphs, with the literal acceptance line, the exact JSON
-from `evidence.disposition_request` and the owner's rationale. Paste the
-contents without the surrounding code fence.
+When the observer returns a finding blocker with
+`evidence.disposition_request`, the pinned repository owner can submit a
+GitHub review with **Comment** after inspecting the findings and the exact
+diff. Use the following paragraphs without the surrounding code fence.
 
 ```text
-I accept the intentional PR Lens skip for this revision.
+I disposition the recorded PR Lens findings for this revision.
 
-<!-- ai-review-gate-disposition:v1 { ... exact JSON from the observer ... } -->
+<!-- ai-review-gate-findings-disposition:v1 { ... exact JSON from the observer ... } -->
 
-<Why the verified documentation diff can use the skip>
+<Explain the resolution or risk accepted for each recorded finding>
 ```
 
-The observer checks the current repository owner's numeric User ID, the
-review commit, submission time and unedited provenance. The disposition binds
-the PR, target branch, full head, base tip, merge base, class, file digest,
-notice ID and notice digest. A new disposition can supersede an older one when
-main advances. Duplicate current dispositions block. This is a human exception
-for an authenticated, unversioned notice. It grants no merge authority and
-carries no claim that PR Lens reviewed the SHA.
+The review must be unedited, on the exact head and submitted strictly after
+each recorded finding. Timestamps must include explicit timezones and are
+compared as instants. The request binds the PR, target branch, full head, base
+tip, merge base, diff classification and digest, plus the finding source IDs,
+timestamps and digests. A changed scope or new finding needs fresh evidence.
+Duplicate current dispositions block. This records the owner's treatment of
+the known findings. Merge, auto-merge, deployment and bypass each require
+separate explicit authorization.
 [Review schema](https://docs.github.com/en/graphql/reference/pulls#pullrequestreview)
 · [PR files](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests-files)
 · [Git trees](https://docs.github.com/en/rest/git/trees#get-a-tree)
@@ -138,9 +120,11 @@ carries no claim that PR Lens reviewed the SHA.
 The disabled-by-default `SandboxPublisher` is an in-memory transport. It
 records pending, success and failure requests with a simulated App ID,
 generation, full PR scope, decision, evidence and digest. A success requires
-two consistent evidence reads and a final scope recheck. A known blocker in
-the same scope can emit failure. Scope drift and unexpected failures can
-leave pending. Simulated acknowledgement loss can leave a visible success
+two consistent evidence reads and a final scope recheck. The simulator reserves
+its invocation generation before the first scope read. Older invocations
+cannot publish after a newer invocation starts. A known blocker, including a
+missing required Codex comment, emits failure after a stable scope recheck.
+Scope drift and unavailable or unexpected read failures can leave pending. Simulated acknowledgement loss can leave a visible success
 without a confirmed receipt. The read-only CLI has no publication switch and
 rechecks scope before emitting eligibility or a disposition request.
 [GitHub commit status API](https://docs.github.com/en/rest/commits/statuses)
@@ -208,11 +192,11 @@ event relay only if delivery and isolation tests justify the operational cost.
 · [Review thread webhook](https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request_review_thread)
 
 The normal observation uses nine reads plus two for a passing scope recheck.
-The skip adds five diff reads. The PR #16 replay used 16 reads including the
-scope recheck. A future publication cycle would use about 22 reads for a
-full review or 32 for a skip, plus status writes. The existing 24-call and
-30-second CLI budget covers observation. A skip publication cycle needs a
-separately validated read budget. Publication tests use synthetic evidence.
+A known finding can add five diff reads to prepare a disposition. A future
+publication cycle would use about 22 reads for a normal observation or 32
+when verifying a disposition, plus status writes. The existing 24-call and
+30-second CLI budget covers observation. A disposition publication cycle
+needs a separately validated read budget. Publication tests use synthetic evidence.
 Cap and coalesce writes below GitHub's per-SHA/context limit. Treat exhausted
 revocation capacity as a hold.
 
@@ -233,9 +217,7 @@ and delivery tests pass. Require a PR, resolved conversations and up-to-date
 required checks. Block force pushes and deletions. Leave ordinary bypass
 actors empty. Require the four contexts below from GitHub Actions App
 `15368` and `AI review complete` from the dedicated publisher's verified App
-ID only if strong enforcement is demonstrated. An unconditional native
-PR Lens check would strand skips with no check. Keep its disposition inside
-the aggregate evaluator. Human merge approval
+ID only if strong enforcement is demonstrated. Keep PR Lens advisory and verify known findings in the aggregate evaluator. Human merge approval
 remains a separate step. [Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 
 - `test (ubuntu-latest, 3.10)`
