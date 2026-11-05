@@ -33,12 +33,14 @@ and cost boundaries in the [operating guide](../AI_REVIEW_GATE.md) and
 ## Tests
 
 Baseline 137 tests passed. New skip tests failed against the old evaluator.
-The implementation passes 42 focused tests and all 160 tests. Independent
+The implementation passes 43 focused tests and all 161 tests. Independent
 security review reproduced the historical PR #16 result using real evidence
 in a simulated open scope, with 11 sensitive documentation files and 16 reads.
 PR #14's historical clean review remained eligible. The simulated status tests
 cover shared SHA visibility, late findings, lifecycle changes, missed and
 duplicate events, write failure and races.
+An explicit acceptance paragraph keeps a quoted disposition marker from
+counting as an owner's decision.
 
 ## Problems Encountered
 

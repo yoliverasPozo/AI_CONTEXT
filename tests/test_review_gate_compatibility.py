@@ -2,7 +2,7 @@ import copy
 import json
 import unittest
 
-from examples.review_gate.evaluator import evaluate
+from examples.review_gate.evaluator import DISPOSITION_ACCEPT, evaluate
 from examples.review_gate.publisher import SandboxPublisher
 from tests.test_ai_review_gate import BASE, HEAD, NEXT, TIME, connection, fixture, marker, set_body
 
@@ -54,7 +54,8 @@ def attest(data, payload, owner=8781658):
               "submittedAt": "2026-11-05T13:00:00Z",
               "lastEditedAt": None, "editor": None, "isMinimized": False,
               "includesCreatedEdit": False, "userContentEdits": connection([]),
-              "body": marker("ai-review-gate-disposition:v1", payload) + "\n\nReviewed the diff."}
+              "body": DISPOSITION_ACCEPT + "\n\n"
+              + marker("ai-review-gate-disposition:v1", payload) + "\n\nReviewed the diff."}
     data["graph"]["pull"]["reviews"] = connection([review])
     return review
 
@@ -190,3 +191,10 @@ class SkipTests(unittest.TestCase):
         new["id"] = "PRR_owner_new"
         data["graph"]["pull"]["reviews"] = connection([old, new])
         self.assertTrue(evaluate(data, 42).eligible)
+
+    def test_quoting_disposition_marker_does_not_express_acceptance(self):
+        data = skip_fixture()
+        payload = evaluate(data, 42).evidence["disposition_request"]
+        review = attest(data, payload)
+        review["body"] = "I am declining this request.\n\n```text\n" + review["body"] + "\n```"
+        self.assertEqual(evaluate(data, 42).reason, "pr_lens_skip_requires_disposition")

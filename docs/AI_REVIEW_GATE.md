@@ -109,12 +109,17 @@ conversations on the current head.
 
 When the observer returns `pr_lens_skip_requires_disposition`, the pinned
 repository owner can inspect the diff, notice and evidence. If the owner accepts
-the exception, submit a GitHub review with **Comment** on that head. Include a
-short rationale and a single marker on its own line containing the exact JSON
-from `evidence.disposition_request`.
+the exception, submit a GitHub review with **Comment** on that head. Use the
+following three paragraphs, with the literal acceptance line, the exact JSON
+from `evidence.disposition_request` and the owner's rationale. Paste the
+contents without the surrounding code fence.
 
 ```text
+I accept the intentional PR Lens skip for this revision.
+
 <!-- ai-review-gate-disposition:v1 { ... exact JSON from the observer ... } -->
+
+<Why the verified documentation diff can use the skip>
 ```
 
 The observer checks the current repository owner's numeric User ID, the

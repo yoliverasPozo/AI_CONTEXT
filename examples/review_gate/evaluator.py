@@ -18,6 +18,7 @@ CODEX = (199175422, "chatgpt-codex-connector", 1144995)
 PR_LENS = (320153949, "coldtea-pr-lens", 4690539)
 DISPOSITION_OWNER = 8781658
 DISPOSITION_MARKER = "ai-review-gate-disposition:v1"
+DISPOSITION_ACCEPT = "I accept the intentional PR Lens skip for this revision."
 LENS_SKIP = """<!-- pr-lens:sticky -->
 
 > [!NOTE]
@@ -334,9 +335,13 @@ def intentional_skip(snapshot, scope, lens, lens_proof, reviews, checks, proof):
         body = review.get("body")
         if (review["author"].get("databaseId") != DISPOSITION_OWNER
                 or (review["commit"] or {}).get("oid") != scope["head"]
-                or not isinstance(body, str) or DISPOSITION_MARKER not in body):
+                or not isinstance(body, str) or not body.startswith(DISPOSITION_ACCEPT + "\n")):
             continue
-        submitted_request = marker(body, DISPOSITION_MARKER, "skip_disposition_invalid")
+        parts = body.split("\n\n", 2)
+        require(len(parts) == 3 and parts[0] == DISPOSITION_ACCEPT
+                and "\n" not in parts[1] and parts[2].strip()
+                and body.count(DISPOSITION_MARKER) == 1, "skip_disposition_invalid")
+        submitted_request = marker(parts[1], DISPOSITION_MARKER, "skip_disposition_invalid")
         require(set(submitted_request) == set(request), "skip_disposition_invalid")
         # Preserve old reviews in the audit trail. An older base, diff or
         # notice may require a new disposition for the same head.
