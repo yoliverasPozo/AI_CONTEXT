@@ -15,7 +15,7 @@ Base branch: <branch or unknown>
 Work branch: <branch or unknown>
 Last inspected commit: <SHA or unknown>
 Last tested commit: <SHA or not run (reason); may precede this record-only commit>
-Pull request: <public-safe URL or none; state draft/open/merged separately>
+Pull request: <public-safe URL or none, GitHub state, and Draft or Ready for Review if open>
 Continuation of: <repository-relative prior handoff path or none>
 
 ### Acknowledgment / transfer history

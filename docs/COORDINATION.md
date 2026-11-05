@@ -78,6 +78,28 @@ If two owners disagree or an owner disappears, leave the conflict explicit
 and have the user or designated maintainer reassign it. Preserve the previous
 owner and reason in the acknowledgment/transfer history.
 
+## Pull request readiness
+
+For Codex and ChatGPT Work, **Ready for Review** is the default in engineering
+repositories where the user authorizes PR publication. Apply it when the
+implementation is complete, locally validated, documented, and suitable for
+independent review.
+
+- Open completed work as Ready for Review. If the task's PR started as Draft,
+  mark it Ready for Review once it meets those criteria. Let configured
+  reviewers, such as Codex and PR Lens, start without waiting for merge approval.
+- Use Draft for incomplete, experimental, or placeholder work, or when the user
+  explicitly requires it. Apply the convention to the current task and future
+  work. Leave unrelated existing PR states to their owners.
+- Before reporting merge readiness, verify that all required CI and automated
+  reviews completed on the current PR head and that findings were addressed.
+  After a corrective push, confirm fresh reviews start and finish on the new
+  head. Record pending, missing, failed, and stale results in the handoff.
+- Keep GitHub review state, handoff status, and merge authorization separate.
+  Ready for Review starts review. Merge, auto-merge, deployment, and bypass
+  require separate explicit owner authorization and compliance with applicable
+  approval, operational, and security requirements.
+
 ## Prepare a handoff
 
 Record enough for a receiver without the original chat to act:

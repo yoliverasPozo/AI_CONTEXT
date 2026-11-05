@@ -56,6 +56,17 @@ acknowledgment, and validation fields. Link open tasks from **Active Work** in
 `docs/AI_CONTEXT.md`. Verify current user authorization and actual session
 capabilities; a handoff never grants permission or guarantees chat access.
 
+## Pull Request Readiness
+
+For authorized PRs, use Ready for Review by default once the implementation is
+complete, locally validated, documented, and suitable for independent review.
+Follow the [coordination policy](docs/COORDINATION.md#pull-request-readiness)
+for draft exceptions, fresh review after corrective pushes, and handoff
+evidence. Confirm required CI and automated reviews on the current head and
+address findings before reporting merge readiness. Merge, auto-merge,
+deployment, and bypass require separate explicit owner authorization and
+compliance with applicable gates.
+
 ## Optional GitHub Handoff Inbox
 
 When a PR opts into GitHub routing using a marker such as
