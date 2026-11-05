@@ -57,7 +57,7 @@ def connection(nodes):
 
 
 def fixture():
-    repo = {"id": REPO_ID, "full_name": "yoliverasPozo/AI_CONTEXT"}
+    repo = {"id": REPO_ID, "full_name": "yoliverasPozo/AI_CONTEXT", "owner": {"id": 8781658}}
     pull = {"id": 700, "node_id": "PR_42", "number": 42, "state": "open", "base_tip": BASE,
             "draft": False, "head": {"sha": HEAD, "ref": "topic", "repo": repo},
             "base": {"sha": BASE, "ref": "main", "repo": repo}}
@@ -87,7 +87,7 @@ def fixture():
         "pull": pull, "open_pulls": [copy.deepcopy(pull)], "comments": [codex, lens],
         "graph": {"pull": {"id": "PR_42", "headRefOid": HEAD, "baseRefOid": BASE,
                            "reviewDecision": None, "reviewThreads": connection([]),
-                           "reviews": connection([])},
+                           "reviews": connection([]), "lifecycle": connection([])},
                   "comments": [codex_graph, lens_graph]},
         "checks": checks, "runs": runs,
         "workflow_blobs": [{"type": "file", "sha": BASE}, {"type": "file", "sha": BASE}],

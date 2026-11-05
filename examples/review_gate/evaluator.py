@@ -5,6 +5,8 @@ import hashlib
 import json
 import re
 
+from .changes import verified_changes
+
 REPOSITORY = "yoliverasPozo/AI_CONTEXT"
 REPO_ID = 1350149746
 BASE_REF = "main"
@@ -14,6 +16,14 @@ WORKFLOW_ID = 347167039
 ACTIONS_APP = 15368
 CODEX = (199175422, "chatgpt-codex-connector", 1144995)
 PR_LENS = (320153949, "coldtea-pr-lens", 4690539)
+DISPOSITION_OWNER = 8781658
+DISPOSITION_MARKER = "ai-review-gate-disposition:v1"
+LENS_SKIP = """<!-- pr-lens:sticky -->
+
+> [!NOTE]
+> Nothing here is code, only docs, data or images, so PR Lens left this pull request undrawn. Comment `@pr-lens draw` to draw it
+
+<sub>`github.comment.notice: false` in `.github/pr-lens.yml` turns this note off</sub>"""
 CI_NAMES = tuple(
     f"test ({os}, {python})"
     for os in ("ubuntu-latest", "windows-latest")
@@ -293,6 +303,73 @@ def ci_proof(snapshot, scope, checks):
             "jobs": [job["id"] for job in jobs], "sha256": fingerprint([run, jobs])}
 
 
+def intentional_skip(snapshot, scope, lens, lens_proof, reviews, checks, proof):
+    require(not any(check["name"] == "PR Lens" or check["app"]["id"] == PR_LENS[2]
+                    for check in checks), "pr_lens_skip_contradicts_check")
+    require(not any(comment["id"] != lens["id"] for comment in snapshot["comments"]
+                    if rest_bot(comment, PR_LENS)), "pr_lens_skip_history_ambiguous")
+    try:
+        category, merge_base, entries = verified_changes(
+            snapshot["changes"], scope, snapshot["pull"]["changed_files"],
+        )
+    except (AttributeError, KeyError, TypeError, ValueError):
+        raise Blocked("change_evidence_invalid") from None
+    proof["pr_lens_outcome"] = "intentional_skip"
+    proof["changes"] = {"class": category, "merge_base": merge_base,
+                        "files": snapshot["pull"]["changed_files"], "sha256": fingerprint(entries)}
+    if category == "executable_or_mixed":
+        return "pr_lens_skip_not_permitted"
+    require(snapshot["pull"]["base"]["repo"]["owner"]["id"] == DISPOSITION_OWNER,
+            "disposition_owner_unverified")
+
+    request = {
+        "decision": "accept_intentional_skip", "repository_id": REPO_ID,
+        "pr_id": scope["id"], "pr_number": scope["number"], "target_branch": BASE_REF,
+        "head": scope["head"], "base_tip": scope["base_tip"], "merge_base": merge_base,
+        "change_class": category, "files_sha256": proof["changes"]["sha256"],
+        "notice_id": lens_proof["id"], "notice_sha256": lens_proof["sha256"],
+    }
+    candidates = []
+    for review in reviews:
+        body = review.get("body")
+        if (review["author"].get("databaseId") != DISPOSITION_OWNER
+                or (review["commit"] or {}).get("oid") != scope["head"]
+                or not isinstance(body, str) or DISPOSITION_MARKER not in body):
+            continue
+        submitted_request = marker(body, DISPOSITION_MARKER, "skip_disposition_invalid")
+        require(set(submitted_request) == set(request), "skip_disposition_invalid")
+        # Preserve old reviews in the audit trail. An older base, diff or
+        # notice may require a new disposition for the same head.
+        if submitted_request == request:
+            candidates.append(review)
+    if not candidates:
+        proof["disposition_request"] = request
+        return "pr_lens_skip_requires_disposition"
+    require(len(candidates) == 1, "skip_disposition_invalid")
+    review = candidates[0]
+    submitted = review["submittedAt"]
+    require(
+        review["author"]["__typename"] == "User" and review["state"] == "COMMENTED"
+        and isinstance(submitted, str) and submitted > lens["updated_at"]
+        and review["lastEditedAt"] is None and review["editor"] is None
+        and review["isMinimized"] is False and review["includesCreatedEdit"] is False
+        and not connection(review["userContentEdits"], "skip_disposition_invalid"),
+        "skip_disposition_invalid",
+    )
+    proof["disposition"] = {"review": review["id"], "actor_id": DISPOSITION_OWNER,
+                            "sha256": fingerprint(review), "scope": request}
+    return "eligible"
+
+
+def verify_lifecycle(timeline):
+    # GitHub reports the total count of all timeline items even when itemTypes
+    # filters the nodes. Only an empty, terminal filtered page proves absence.
+    events = rows(timeline["nodes"])
+    require(not events, "pr_lifecycle_requires_revalidation")
+    require(type(timeline["totalCount"]) is int and timeline["totalCount"] >= 0
+            and timeline["pageInfo"]["hasNextPage"] is False, "pr_lifecycle_unavailable")
+
+
 @dataclass(frozen=True)
 class Decision:
     reason: str
@@ -321,6 +398,7 @@ def evaluate(snapshot, number):
                 and pull["baseRefOid"] == scope["base"], "pr_changed_during_read")
         require(pull["reviewDecision"] in (None, "APPROVED", "REVIEW_REQUIRED"),
                 "blocking_review_decision")
+        verify_lifecycle(pull["lifecycle"])
         threads = connection(pull["reviewThreads"], "review_threads_incomplete")
         require(all(thread["isResolved"] is True for thread in threads), "unresolved_review_thread")
         require(all(isinstance(thread["id"], str) and thread["id"] for thread in threads)
@@ -332,10 +410,22 @@ def evaluate(snapshot, number):
         codex_proof = comment_proof(codex, nodes, CODEX, "codex")
         lens_proof = comment_proof(lens, nodes, PR_LENS, "pr_lens")
         codex_review(codex["body"], head)
+        checks = rows(snapshot["checks"])
+        proof = {
+            "pr": scope, "codex": codex_proof, "pr_lens": lens_proof,
+            "review_decision": pull["reviewDecision"], "review_submissions_sha256": reviews_digest,
+            "threads": sorted(t["id"] for t in threads),
+        }
+        if lens["body"].rstrip("\n") == LENS_SKIP:
+            lens_node = next(node for node in nodes if node["id"] == lens["node_id"])
+            require(lens_node["lastEditedAt"] is None, "pr_lens_skip_history_ambiguous")
+            proof["ci"] = ci_proof(snapshot, scope, checks)
+            reason = intentional_skip(snapshot, scope, lens, lens_proof,
+                                      pull["reviews"]["nodes"], checks, proof)
+            return Decision(reason, head, fingerprint(proof), proof)
+
         lens_node = next(node for node in nodes if node["id"] == lens["node_id"])
         lens_pending_at = lens_review(lens_node, head, number)
-
-        checks = rows(snapshot["checks"])
         lens_check = passed_check(checks, "PR Lens", PR_LENS[2], head, "pr_lens_check_incomplete")
         require(
             lens_check["details_url"] == f"https://github.com/{REPOSITORY}/pull/{number}"
@@ -343,13 +433,9 @@ def evaluate(snapshot, number):
             "pr_lens_check_not_linked",
         )
         require(lens_check["completed_at"] == lens_pending_at, "pr_lens_check_transition_mismatch")
-        proof = {
-            "pr": scope, "codex": codex_proof, "pr_lens": lens_proof,
-            "pr_lens_check": {"id": lens_check["id"], "sha256": fingerprint(lens_check)},
-            "ci": ci_proof(snapshot, scope, checks),
-            "review_decision": pull["reviewDecision"], "review_submissions_sha256": reviews_digest,
-            "threads": sorted(t["id"] for t in threads),
-        }
+        proof["pr_lens_outcome"] = "reviewed_clean"
+        proof["pr_lens_check"] = {"id": lens_check["id"], "sha256": fingerprint(lens_check)}
+        proof["ci"] = ci_proof(snapshot, scope, checks)
         return Decision("eligible", head, fingerprint(proof), proof)
     except Blocked as error:
         return Decision(error.args[0])
@@ -362,23 +448,34 @@ def reconcile(number, read_snapshot, read_pull, publish=None):
     try:
         if publish is not None:
             scope = pull_scope(read_pull(), number)
-            publish(scope["head"], "pending", Decision("evaluation_started", scope["head"]))
+            publish(scope["head"], "pending",
+                    Decision("evaluation_started", scope["head"], evidence={"pr": scope}))
         initial = evaluate(read_snapshot(), number)
-        if not initial.eligible:
-            return initial
         if publish is None:
-            if pull_scope(read_pull(), number) != initial.evidence["pr"]:
+            if (initial.eligible or "disposition_request" in initial.evidence) and (
+                pull_scope(read_pull(), number) != initial.evidence["pr"]
+            ):
                 return Decision("evidence_changed_during_evaluation")
             return initial
-        if initial.evidence["pr"] != scope:
+
+        if initial.evidence.get("pr", scope) != scope:
             return Decision("evidence_changed_before_publish")
-        fresh = evaluate(read_snapshot(), number)
-        if not fresh.eligible:
-            return fresh
-        if fresh.digest != initial.digest or pull_scope(read_pull(), number) != fresh.evidence["pr"]:
+        result = initial
+        if initial.eligible:
+            result = evaluate(read_snapshot(), number)
+            if result.evidence.get("pr", scope) != scope:
+                return Decision("evidence_changed_before_publish")
+            if result.eligible and result.digest != initial.digest:
+                result = Decision("evidence_changed_before_publish")
+        if pull_scope(read_pull(), number) != scope:
             return Decision("evidence_changed_before_publish")
-        publish(fresh.head, "success", fresh)
-        return fresh
+        if result.eligible:
+            publish(scope["head"], "success", result)
+        else:
+            publish(scope["head"], "failure", Decision(
+                result.reason, scope["head"], result.digest, {**result.evidence, "pr": scope},
+            ))
+        return result
     except Blocked as error:
         return Decision(error.args[0])
     except Exception:
@@ -392,10 +489,12 @@ def commit_status(sha_value, state, decision):
     require(
         (state == "success" and decision.eligible and isinstance(decision.digest, str)
          and re.fullmatch(r"[a-f0-9]{64}", decision.digest))
-        or (state == "pending" and decision.reason == "evaluation_started"),
+        or (state == "pending" and decision.reason == "evaluation_started")
+        or (state == "failure" and not decision.eligible and decision.reason != "evaluation_started"),
         "status_state_invalid",
     )
-    description = "Evaluation started" if state == "pending" else f"Evidence {decision.digest[:32]}"
+    descriptions = {"pending": "Evaluation started", "failure": "Review gate blocked"}
+    description = f"Evidence {decision.digest[:32]}" if state == "success" else descriptions[state]
     return {
         "method": "POST", "path": f"repos/{REPOSITORY}/statuses/{sha_value}",
         "body": {"context": CONTEXT, "state": state, "description": description},

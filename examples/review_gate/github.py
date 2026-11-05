@@ -5,8 +5,10 @@ import subprocess
 import time
 from urllib.parse import urlencode
 
+from .changes import MAX_CHANGED_FILES
+
 from .evaluator import (
-    BASE_REF, REPOSITORY, WORKFLOW, WORKFLOW_ID, Blocked, positive_id, pull_scope,
+    BASE_REF, LENS_SKIP, REPOSITORY, WORKFLOW, WORKFLOW_ID, Blocked, positive_id, pull_scope,
     require, review_comments, rows, sha, strict_json,
 )
 
@@ -14,7 +16,7 @@ PER_PAGE = 100
 MAX_PAGES = 5
 MAX_BYTES = 8 * 1024 * 1024
 
-BOT = "login __typename ... on Bot { databaseId }"
+ACTOR = "login __typename ... on Bot { databaseId } ... on User { databaseId }"
 QUERY = """
 query GateEvidence($owner: String!, $repo: String!, $number: Int!, $ids: [ID!]!) {
   repository(owner: $owner, name: $repo) {
@@ -23,25 +25,34 @@ query GateEvidence($owner: String!, $repo: String!, $number: Int!, $ids: [ID!]!)
       reviewThreads(first: 100) {
         totalCount pageInfo { hasNextPage } nodes { id isResolved }
       }
+      lifecycle: timelineItems(first: 1, itemTypes: [BASE_REF_CHANGED_EVENT,
+          BASE_REF_FORCE_PUSHED_EVENT, HEAD_REF_FORCE_PUSHED_EVENT,
+          HEAD_REF_RESTORED_EVENT, REOPENED_EVENT, CONVERT_TO_DRAFT_EVENT]) {
+        totalCount pageInfo { hasNextPage } nodes { __typename }
+      }
       reviews(first: 100) {
         totalCount pageInfo { hasNextPage }
-        nodes { id state submittedAt lastEditedAt isMinimized commit { oid } author { BOT } }
+        nodes {
+          id state submittedAt lastEditedAt isMinimized commit { oid } author { ACTOR }
+          body editor { ACTOR } includesCreatedEdit
+          userContentEdits(first: 1) { totalCount pageInfo { hasNextPage } nodes { id } }
+        }
       }
     }
   }
   comments: nodes(ids: $ids) {
     ... on IssueComment {
       id body updatedAt createdAt isMinimized lastEditedAt includesCreatedEdit
-      author { BOT }
-      editor { BOT }
+      author { ACTOR }
+      editor { ACTOR }
       userContentEdits(first: 100) {
         totalCount pageInfo { hasNextPage }
-        nodes { editor { BOT } editedAt deletedAt diff }
+        nodes { editor { ACTOR } editedAt deletedAt diff }
       }
     }
   }
 }
-""".replace("BOT", BOT)
+""".replace("ACTOR", ACTOR)
 
 
 class GitHub:
@@ -75,7 +86,7 @@ class GitHub:
         suffix = f"?{urlencode(query)}" if query else ""
         return self.request(f"repos/{REPOSITORY}/{path}{suffix}")
 
-    def pages(self, path, key=None, **query):
+    def pages(self, path, key=None, *, identity_key="id", **query):
         items, seen, total = [], set(), None
         for page in range(1, MAX_PAGES + 1):
             data = self.get(path, per_page=PER_PAGE, page=page, **query)
@@ -88,8 +99,10 @@ class GitHub:
             batch = rows(data)
             require(len(batch) <= PER_PAGE, "pagination_incomplete")
             for item in batch:
-                identity = item["id"]
-                require(positive_id(identity) and identity not in seen, "pagination_incomplete")
+                identity = item[identity_key]
+                valid = (positive_id(identity) if identity_key == "id"
+                         else isinstance(identity, str) and bool(identity))
+                require(valid and identity not in seen, "pagination_incomplete")
                 seen.add(identity)
             items.extend(batch)
             if len(batch) < PER_PAGE or len(items) == total:
@@ -119,7 +132,7 @@ class GitHub:
         }))
         require(type(response) is dict and not response.get("errors"), "graphql_incomplete")
         graph = response["data"]
-        return {
+        result = {
             "pull": pull,
             "open_pulls": self.pages("pulls", state="open", base=BASE_REF),
             "comments": comments,
@@ -130,3 +143,20 @@ class GitHub:
             "workflow_blobs": [self.get(f"contents/{WORKFLOW}", ref=ref)
                                for ref in (scope["base_tip"], head)],
         }
+        if selected[1]["body"].rstrip("\n") == LENS_SKIP:
+            result["changes"] = self.changed_files(number, scope, pull["changed_files"])
+        return result
+
+    def changed_files(self, number, scope, count):
+        require(positive_id(count) and count <= MAX_CHANGED_FILES, "changed_file_count_out_of_bounds")
+        files = self.pages(f"pulls/{number}/files", identity_key="filename")
+        require(len(files) == count, "change_evidence_invalid")
+        head = scope["head"]
+        comparison = self.get(f"compare/{scope['base_tip']}...{head}", per_page=1)
+        commit = self.get(f"git/commits/{head}")
+        base_tree = comparison["merge_base_commit"]["commit"]["tree"]["sha"]
+        head_tree = commit["tree"]["sha"]
+        require(sha(base_tree) and sha(head_tree), "change_evidence_invalid")
+        return {"files": files, "comparison": comparison, "head_commit": commit,
+                "base_tree": self.get(f"git/trees/{base_tree}", recursive=1),
+                "head_tree": self.get(f"git/trees/{head_tree}", recursive=1)}
