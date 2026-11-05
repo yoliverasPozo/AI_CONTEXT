@@ -2,7 +2,7 @@
 
 The optional evaluator observes open, non-draft PRs from this repository into
 `main`. Its CLI prints a decision and a sanitized receipt. A passing receipt
-is a candidate for the future `AI review complete` status. Merge approval
+is a candidate for the future advisory `AI review complete` status. Merge approval
 continues to come from the owner.
 
 ```powershell
@@ -27,10 +27,10 @@ permissions were read and Actions review approval was disabled.
 
 | Source | GitHub identity | Required evidence |
 | --- | --- | --- |
-| Codex | App `1144995`, bot `199175422` | One authenticated summary with a version 1 code review record for the full head SHA, completed and both findings flags false. An active security review must also be current and clean. |
-| PR Lens | App `4690539`, bot `320153949` | One authenticated sticky comment with a current full SHA and PR-specific graph key, a clean review section, and a retained bot edit showing the review pending for that full SHA immediately before the clean result. One matching successful PR Lens check must link to the sticky comment and match the pending edit's timestamp. |
+| Codex | App `1144995`, bot `199175422` | One authenticated summary with a version 1 code review record for the full head SHA, completed, with no unresolved findings. An active security review must also be current and clean. |
+| PR Lens | App `4690539`, bot `320153949` | Advisory. A verified unresolved finding blocks. An absent, incomplete or stale verdict leaves PR Lens advisory and does not block by itself. |
 | Tests | GitHub Actions App `15368`, workflow `347167039` | The latest matching `pull_request` run for this head and branch is successful. All four expected jobs come from that run's suite. The workflow blob matches the current main tip. |
-| Conversations | GitHub GraphQL for the same PR and head | Every inline thread resolved, a complete review list and no blocking review decision. Separate same-head submissions from either bot block until disposition can be proven. |
+| Conversations | GitHub GraphQL for the same PR and head | Every inline thread resolved, a complete review list and no blocking review decision. Unverified same-head standalone Codex submissions block. Verified PR Lens findings are tracked separately from thread resolution. |
 
 PR #13 showed an unresolved Codex finding and a successful PR Lens check.
 PR #14 showed the transition from that distinction to a clean re-review on
@@ -49,47 +49,91 @@ same-repository PRs using `pull_request_target`. The gate ignores labels and
 handoff markers. A routing event or check cannot supply review evidence.
 [Handoff protocol](COORDINATION.md)
 
-## Trust and findings disposition
+## Review evidence and findings
 
-The collector joins REST App and bot IDs to the same GraphQL comment node,
-body and timestamps. It requires the original author and every visible
-editor to be the pinned bot. A minimized comment, unexpected editor, deleted
-edit, duplicate marker, truncated response or missing field blocks. On the
-observed PR Lens history, GraphQL's `diff` returned the full raw body of each
-revision. The evaluator requires that shape and rejects an observed collision
-between the abbreviated SHA and a different full SHA in the retained history.
-An editable Markdown body alone provides no proof of identity or review.
-These provider formats are empirical and can change. The publisher must stay
-inactive until an exact-head review contract or authenticated attestation has
-been validated. [GitHub comment schema](https://docs.github.com/en/graphql/reference/issues#issuecomment)
+Codex, all four required CI jobs and resolved conversations are mandatory.
+The collector joins the reviewer App and bot IDs to the corresponding GitHub
+GraphQL node, body and timestamps. Codex requires complete, unambiguous proof
+on the full head. A missing Codex comment blocks. A minimized comment,
+unexpected editor, duplicate marker or incomplete required history cannot
+satisfy the proof.
 
-The implemented disposition path is a clean, authenticated re-review on the
-current revision plus resolved inline conversations. An unresolved finding
-blocks even if its thread is marked resolved. A current-head standalone
-bot review blocks because its findings may arrive before the sticky summary
-changes. Prior-head bot submissions can coexist with a clean current review
-after their conversations are resolved. The evaluator grants no text-based
-waiver. A future waiver or reviewer attestation needs an authenticated,
-allowlisted reviewer ID and an auditable record of repository, PR, head, base
-or diff, evidence digest, finding IDs and individual decisions. A retained
-append-only ledger would detect changes or removals after the first observation.
-The GitHub snapshot cannot recover findings deleted before observation.
+PR Lens is advisory for ordinary documentation, sensitive documentation and
+code changes. The receipt distinguishes authenticated clean review,
+intentional skip, incomplete review, unknown evidence and known findings.
+An intentional skip such as [the notice on PR #16](https://github.com/yoliverasPozo/AI_CONTEXT/pull/16#issuecomment-6660777168)
+conveys that the provider skipped. A successful drawing check, silence or a
+prior-head verdict cannot establish a clean current review. An authenticated
+clean verdict must bind the PR-specific pending-to-clean history to the full
+head and a matching drawing check. Provider formats are empirical and can
+change. [GitHub comment schema](https://docs.github.com/en/graphql/reference/issues#issuecomment)
+
+The evaluator checks authenticated finding reports in issue comments,
+standalone reviews and inline review comments. It considers retained
+bot-authored versions even when a report was edited, minimized or dismissed.
+A resolved thread alone does not clear a verified finding. A verified clean
+current-head review can supersede reports strictly older than its authenticated
+pending marker. Reports during or after that review remain blockers. GitHub
+review decisions and unresolved threads remain independent blockers. A GitHub
+snapshot cannot recover a finding deleted before observation. A live pilot
+needs a durable evidence ledger to retain previously observed blockers.
+
+## Owner disposition of known findings
+
+Address the finding and obtain verified clearing evidence, or have the owner
+review and explicitly disposition the exact known findings. The observer
+reconciles the complete PR file list against immutable head and merge-base
+trees for the current base tip before offering a disposition. Counts, paths,
+rename endpoints, blob IDs and modes must agree. The request records whether
+the diff is ordinary documentation, sensitive documentation, or executable or
+mixed. Only regular Markdown at reserved release-note paths qualifies as
+ordinary documentation. The classification records scope for human review
+and grants no automatic waiver.
+
+When the observer returns a finding blocker with
+`evidence.disposition_request`, the pinned repository owner can submit a
+GitHub review with **Comment** after inspecting the findings and the exact
+diff. Use the following paragraphs without the surrounding code fence.
+
+```text
+I disposition the recorded PR Lens findings for this revision.
+
+<!-- ai-review-gate-findings-disposition:v1 { ... exact JSON from the observer ... } -->
+
+<Explain the resolution or risk accepted for each recorded finding>
+```
+
+The review must be unedited, on the exact head and submitted strictly after
+each recorded finding. Timestamps must include explicit timezones and are
+compared as instants. The request binds the PR, target branch, full head, base
+tip, merge base, diff classification and digest, plus the finding source IDs,
+timestamps and digests. A changed scope or new finding needs fresh evidence.
+Duplicate current dispositions block. This records the owner's treatment of
+the known findings. Merge, auto-merge, deployment and bypass each require
+separate explicit authorization.
+[Review schema](https://docs.github.com/en/graphql/reference/pulls#pullrequestreview)
+· [PR files](https://docs.github.com/en/rest/pulls/pulls#list-pull-requests-files)
+· [Git trees](https://docs.github.com/en/rest/git/trees#get-a-tree)
 
 ## Publication boundary
 
-Tests inject a publisher into `reconcile` and validate the fixed commit-status
-request from `commit_status`. The protocol sends pending before evaluation,
-re-reads all the evidence, compares its digest and checks the PR scope again
-immediately before success. A failed read, changed digest or transport error
-returns a blocked result. If the pending request succeeded, it stays pending
-when evaluation fails. The read-only CLI also rechecks PR scope before
-reporting eligibility. The request contains a fixed context and a digest
-reference. A future trusted host must retain the full receipt alongside it.
+The disabled-by-default `SandboxPublisher` is an in-memory transport. It
+records pending, success and failure requests with a simulated App ID,
+generation, full PR scope, decision, evidence and digest. A success requires
+two consistent evidence reads and a final scope recheck. The simulator reserves
+its invocation generation before the first scope read. Older invocations
+cannot publish after a newer invocation starts. A known blocker, including a
+missing required Codex comment, emits failure after a stable scope recheck.
+Scope drift and unavailable or unexpected read failures can leave pending. Simulated acknowledgement loss can leave a visible success
+without a confirmed receipt. The read-only CLI has no publication switch and
+rechecks scope before emitting eligibility or a disposition request.
 [GitHub commit status API](https://docs.github.com/en/rest/commits/statuses)
 
-Production publication needs a dedicated GitHub App identity with installation
-scope limited to the pilot repository and the minimum permissions for metadata,
-PR/issue/Actions/check reads, workflow blob reads and commit statuses write.
+For a future pilot, separate the trusted reader from a dedicated status
+publisher App installed only in the sandbox repository. The publisher needs
+Metadata read and Commit statuses write. The reader needs access to PRs and
+associated comments, Actions runs, checks and Git content. Verify the smallest
+grant and the actual status source during sandbox acceptance.
 Keep the private key or token in a separately protected host or environment.
 Use trusted code and an installed, pinned GitHub CLI or fixed API client.
 The GitHub Actions App identity is shared by workflows. Pinning it alone cannot
@@ -100,14 +144,22 @@ administration permission.
 
 GitHub stores a required status against a commit, so a different PR with the
 same SHA can inherit it. The observer refuses currently ambiguous open heads,
-but a later PR, reopened PR or force reset can reuse a previously green SHA.
+and the simulator refuses a second PR's claim on a head it has seen. GitHub
+can still expose the first PR's green status. The observer blocks recorded
+reopen, retarget, conversion to draft, head restoration and head or base
+force-push history. Use a manual review or new PR and revision in these cases.
+An initially Draft PR can become Ready for Review.
 Similarly, edits, dismissals, CI reruns and missed webhooks can invalidate
-evidence while the head remains fixed. A recheck reduces the race window.
+evidence while the head remains fixed. The simulator fences older terminal
+writes and invalidates local receipts, even when native green remains visible.
+A recheck reduces the race window. Lost local state or missed events can
+still leave a stale status.
 GitHub provides no atomic operation that reads the reviewer evidence, publishes
-a status and merges. Before any required rule is enabled, prove a controlled
-head reuse policy and status invalidation in a sandbox. If that cannot be
-established, keep the status advisory and require a fresh observation at the
-human merge decision.
+a status and merges. Keep the status advisory. The safer fallback is an
+owner-controlled merge decision after a fresh trusted observation of the
+exact PR, head and target tip, with separate human authorization. A merge API
+SHA guard can reject a moved head. It cannot pin mutable review evidence.
+[Merge API](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
 
 ## Events and cost
 
@@ -139,17 +191,24 @@ event relay only if delivery and isolation tests justify the operational cost.
 · [GITHUB_TOKEN](https://docs.github.com/en/actions/concepts/security/github_token)
 · [Review thread webhook](https://docs.github.com/en/webhooks/webhook-events-and-payloads#pull_request_review_thread)
 
-The live read of PR #8 took about six seconds on Windows and used nine API
-requests. A passing observation adds two scope reads. Simulated publication
-uses two complete reads and two scope checks, normally 22 API reads before
-success. The pending write follows the first scope check. The CLI caps a session
-at 24 calls and 30 seconds. It bounds REST
-pages and refuses truncated GraphQL connections rather than guessing. No new
-Actions run is created by the observer today. An illustrative rollout at five
-one-minute Linux jobs per PR and 20 PRs per month would consume about 100
-runner-minutes per month, including provisioning. Measure real counts and
-latency in a sandbox. Standard hosted runners are free for this public
-repository. [GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
+The normal observation uses nine reads plus two for a passing scope recheck.
+A known finding can add five diff reads to prepare a disposition. A future
+publication cycle would use about 22 reads for a normal observation or 32
+when verifying a disposition, plus status writes. The existing 24-call and
+30-second CLI budget covers observation. A disposition publication cycle
+needs a separately validated read budget. Publication tests use synthetic evidence.
+Cap and coalesce writes below GitHub's per-SHA/context limit. Treat exhausted
+revocation capacity as a hold.
+
+| Architecture | Operational and compute tradeoffs |
+| --- | --- |
+| Trusted Actions job | No daemon. Use default-branch code, filtered events and no PR execution. At 20 heads per month and three to five short jobs per head, estimate 60 to 100 one-minute runner slots including setup. Verify check and thread event delivery. |
+| Dedicated App | Independent status source and webhook delivery. Requires installation, key custody, deduplication and a receipt store. Hosting adds cost and cannot remove native SHA reuse. |
+| Manual observation and attestation | One fresh observation at the owner's decision. Uses the existing session and zero new Actions jobs. Requires operator time and a separate merge decision. |
+
+Standard hosted runners are free for this public repository. The table models
+usage and is not a billing prediction for other repositories.
+[GitHub Actions billing](https://docs.github.com/en/billing/concepts/product-billing/github-actions)
 
 ## Proposed GitHub Pro ruleset
 
@@ -158,8 +217,7 @@ and delivery tests pass. Require a PR, resolved conversations and up-to-date
 required checks. Block force pushes and deletions. Leave ordinary bypass
 actors empty. Require the four contexts below from GitHub Actions App
 `15368` and `AI review complete` from the dedicated publisher's verified App
-ID. Require the PR Lens check from App `4690539` as an additional native
-signal if the sandbox confirms the check association. Human merge approval
+ID only if strong enforcement is demonstrated. Keep PR Lens advisory and verify known findings in the aggregate evaluator. Human merge approval
 remains a separate step. [Rulesets](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 
 - `test (ubuntu-latest, 3.10)`
@@ -194,3 +252,14 @@ non-enforcing sandbox publisher and its minimal App credentials, and applying
 the final ruleset to main after sandbox evidence. Any event wiring or protected
 environment for publication belongs to that rollout. The existing repository
 and Project workflows are outside the gate's scope.
+
+For the first live sandbox proposal, identify one disposable repository,
+target branch, PR, full commit SHA, context and dedicated App installation.
+Review the sandbox-specific adapter and its read budget. Request approval for
+one pending/success pair and one pending/failure pair at most. Keep the context
+advisory. Use a second PR with the same SHA to observe native status reuse, and
+capture provider identity, readback and both PR-specific receipts. Test a
+withheld event and simulated lost acknowledgement without authorizing a merge.
+If any write outcome is uncertain, stop, inspect the status source and retain
+the evidence before asking about recovery. These are preparation steps for a
+separate authorization.

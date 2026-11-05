@@ -14,8 +14,9 @@ same commit.
 ## Decision
 
 Use an optional repository-specific observer on trusted code. Require current
-authenticated reviewer evidence and its provenance, verified CI and resolved
-conversations. Record a bounded receipt and exercise pending and success
+authenticated Codex evidence and its provenance, verified CI and resolved
+conversations. [ADR 0009](0009-documentation-skip-and-sandbox-status.md)
+specifies advisory PR Lens evidence and disposition of known findings. Record a bounded receipt and exercise pending and success
 publication against a simulated transport. Keep the publisher and native
 rules inactive pending an owner-approved sandbox validation.
 
@@ -37,8 +38,8 @@ needs verified status source, shared-SHA isolation and an invalidation plan.
 
 ## Consequences
 
-The observer errs toward blocking when providers change formats or when review
-history is incomplete. The existing Actions and handoff workflow stay outside
+The observer blocks when required evidence is incomplete or known findings
+remain unresolved. The existing Actions and handoff workflow stay outside
 the gate. Native status rules cannot atomically reflect mutable review evidence
 and do not identify a specific PR for a shared SHA. See the
 [operating guide](../AI_REVIEW_GATE.md) for activation prerequisites.
