@@ -49,3 +49,18 @@ pointers, acknowledgment, checks, and next action in the existing session
 records, linked from **Active Work** in `docs/AI_CONTEXT.md` when useful. Missing
 coordination files do not invalidate the core workflow. Handoff records do not
 grant new permissions or imply access to another agent's conversation.
+
+## Pull Request Readiness
+
+When authorized to publish, open completed, locally validated, documented work
+as Ready for Review once it is suitable for independent review. Promote the
+task's Draft PR at that point so configured reviewers can start. Use Draft for
+incomplete, experimental, or placeholder work, or when explicitly required.
+Leave unrelated PR states to their owners.
+
+Verify required CI and automated reviews on the current PR head and address
+findings before reporting merge readiness. After corrective pushes, verify
+fresh reviews start and finish. Follow the readiness policy in
+`docs/COORDINATION.md` when present and record review status in the handoff.
+Merge, auto-merge, deployment, and bypass require separate explicit owner
+authorization and compliance with applicable gates.

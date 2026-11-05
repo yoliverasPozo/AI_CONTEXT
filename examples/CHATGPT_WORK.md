@@ -44,6 +44,18 @@ PUBLISHED for an authorized writer. If you cannot read the repository, request
 sanitized context and relevant files at a named revision; identify unverified
 claims. Never request credentials in chat or invent passing test results.
 
+When authorized to publish, use Ready for Review for completed, locally
+validated, documented work suitable for independent review. Promote the task's
+Draft PR when it meets those criteria so configured reviewers can start. Use
+Draft for incomplete, experimental, or placeholder work, or when explicitly
+required. Leave unrelated PR states to their owners.
+
+Verify required CI and automated reviews on the current PR head and address
+findings before reporting merge readiness. After a corrective push, verify
+fresh reviews start and finish. Keep review state and merge authorization
+separate in the handoff. Merge, auto-merge, deployment, and bypass require
+separate explicit owner authorization and compliance with applicable gates.
+
 Keep all public material free of secrets, sensitive logs, personal/customer
 data, private chat/task URLs or IDs, raw transcripts, and hidden chain-of-thought.
 Review file contents, artifacts, commit messages, PR text, and links before

@@ -105,6 +105,11 @@ history. The repository is both a reusable reference and a live example.
 
 ## Important Decisions
 
+- Completed, validated work in an authorized PR starts as Ready for Review.
+  Record CI, reviewer results for the current head, and separate merge
+  authorization in the handoff. See the
+  [coordination policy](COORDINATION.md#pull-request-readiness).
+
 - Shared memory is curated engineering context, not secrets, raw transcripts,
   private conversation identifiers, or hidden chain-of-thought.
 - Current observable repository/runtime evidence precedes accepted ADRs,
