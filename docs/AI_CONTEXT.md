@@ -72,9 +72,9 @@ history. The repository is both a reusable reference and a live example.
 - A later pilot recorded a changed total across immediate post-add pages. Bounded
   fresh-read stabilization merged in PR13 as an experimental opt-in; it does not
   establish the first pilot's lost trigger or permit broader/unattended execution.
-- PR13's terminal count mismatch could restart despite a missing approved
-  original. A corrective regression/fix is under review; no further pilot is
-  prepared. Current GitHub rules do not enforce both AI reviews before merging.
+- Current GitHub rules do not enforce both AI reviews before merging.
+  The optional observer tests review evidence. Publication and native
+  enforcement require separate rollout validation and owner approval.
 - Work capabilities vary per session. The three-agent GitHub handoff trial has
   passed its initial independent review, but automatic cross-chat transfers,
   instruction discovery, and broad real-project use remain untested.
@@ -82,6 +82,11 @@ history. The repository is both a reusable reference and a live example.
   one controlled documentation round-trip is evidence, not full validation.
 
 ## Recent Changes
+
+- PR #14 merged as `810a7388e1989558e1e787a81cd66d19c6fa21c8` after four
+  successful CI jobs and clean Codex and PR Lens reviews on the approved
+  revision. It preserves approved originals across terminal pagination
+  and verifies distinct active and archived omission cases.
 
 - Merged PR #3's optional coordination protocol and explicit-transfer template while
   preserving the original context, ADR, and session structures.
@@ -124,14 +129,17 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
+- AI review completion gate is in review on `feat/ai-review-completion-gate`.
+  The [observer and operating guide](AI_REVIEW_GATE.md) cover reviewer identity,
+  provenance, clean disposition, CI and simulated publication. See the
+  [session handoff](sessions/2026-11-05-ai-review-completion-gate.md).
+
 - Writer PR11 is merged at `451c7c8c9315a59fdff838e37d6f9b6b80e1b5c6`.
   Diagnostic PR12 merged at `4e506b29ae458cb138b0b719d8cf9607e68deb5f`.
   PR13 stabilization merged as `c4d9fa2ae8d85fc99befdddc787bd9f4aa3edf19`;
-  117 tests and all four exact-main CI jobs passed. Reusing
-  `fix/project-readback-stabilization` for the terminal missing-original correction:
-  terminal guard added and archive-state fixtures corrected after PR Lens review.
-  Both missing-original cases reproduce the prior defect and pass on PR14, along
-  with all 118 tests. No eligible missing PR found for another timed pilot; original
+  117 tests and all four exact-main CI jobs passed. The PR14 correction is now
+  on main. Both missing-original cases reproduce the prior defect and pass
+  with the guard. No eligible missing PR was found in the last pilot inventory. Original
   receipts stay immutable. See the [corrective session](sessions/2026-11-04-terminal-original-preservation.md),
   [review-gate proposal](reviews/2026-11-04-review-completion-gate.md),
   [session](sessions/2026-11-04-verification-stabilization.md),
