@@ -279,12 +279,13 @@ class Backend:
             require(metadata is None or metadata==observed, "Project/target changed during pagination")
             metadata=observed
             batch,count,page=connection_page(p.get("items"))
+            field_ids = {f["id"] for f in fields}
             for node in batch:
                 content=node.get("content")
                 require(type(content) is dict, "redacted Project content")
                 item={"id":node.get("id"),"content_id":content.get("id"),"kind":content.get("__typename"),
                       "archived":node.get("isArchived"),"values":[value(v) for v in whole_connection(node.get("fieldValues"))]}
-                item = normalize_items([item], {f["id"] for f in fields})[0]
+                item = normalize_items([item], field_ids)[0]
                 self._check_expected_item(item)
                 require(item["id"] not in item_ids and item["content_id"] not in content_ids, "duplicate item/content identity")
                 item_ids.add(item["id"]); content_ids.add(item["content_id"])
@@ -293,6 +294,10 @@ class Backend:
                 require(page["endCursor"] not in cursors, "pagination cursor repeated")
             require(len(items)<=count, "inconsistent item count")
             if not page["hasNextPage"]:
+                if self._verification is not None:
+                    # A fresh read must never conceal a terminal omission, even
+                    # when the count guard would otherwise permit a restart.
+                    require(set(self._verification["originals"]) <= item_ids, "original item/field state changed")
                 require(len(items)==count, "incomplete Project item read")
             if total is not None and total!=count:
                 raise _PaginationCountChanged("membership count changed during pagination")

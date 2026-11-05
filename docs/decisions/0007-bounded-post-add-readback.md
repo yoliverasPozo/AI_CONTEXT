@@ -24,6 +24,11 @@ and cursor validity before a restart. Genuine drift, malformed evidence, unknown
 errors and exhausted budgets stop. Durably record each failure before another
 read. A complete fresh snapshot still passes all final preservation invariants.
 
+At a terminal page, verify the observed IDs contain every approved original,
+including archived originals, before a count mismatch can trigger another read.
+Otherwise a later stable snapshot could hide an omission observed in a completed
+attempt. Count overflow and incomplete-page checks also precede restart eligibility.
+
 A monotonic deadline bounds read transport timeouts, attempts, evidence persistence
 and final state validation. Check it immediately before acceptance. Final receipt
 fsync cannot itself be interrupted or guaranteed to finish within that deadline.
