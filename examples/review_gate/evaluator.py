@@ -354,7 +354,7 @@ def lens_versions(node, published_at):
 
 def lens_advisory(comments, nodes, reviews, inline, scope, checks):
     observations, findings = [], []
-    clean_started_at = None
+    clean_starts, comment_findings = [], []
 
     def record(kind, identity, body, seen_at, superseded_at=None):
         observed = timestamp(seen_at, "pr_lens_finding_timestamp_invalid")
@@ -389,15 +389,21 @@ def lens_advisory(comments, nodes, reviews, inline, scope, checks):
             pass
         observations.append(observation)
 
+        if verified_at is not None:
+            clean_starts.append(verified_at)
         if observation["outcome"] == "findings":
-            record("comment", comment["id"], body, comment["updated_at"])
-        if len(comments) == 1:
-            clean_started_at = verified_at
-        # GitHub retains attributed versions when a sticky is edited or
+            comment_findings.append((comment["id"], body, comment["updated_at"]))
+        # GitHub retains attributed versions when a report is edited or
         # minimized. Read them separately from the stricter clean proof.
         for version, seen_at in lens_versions(node, node.get("createdAt")):
             if lens_finding(version):
-                record("comment", comment["id"], version, seen_at, clean_started_at)
+                comment_findings.append((comment["id"], version, seen_at))
+
+    # Establish one authenticated transition before considering any finding,
+    # regardless of comment order or whether it appears in the sticky.
+    clean_started_at = clean_starts[0] if len(clean_starts) == 1 else None
+    for identity, body, seen_at in comment_findings:
+        record("comment", identity, body, seen_at, clean_started_at)
 
     for review in reviews:
         if not graph_bot(review["author"], PR_LENS) or review["state"] == "PENDING":
@@ -415,9 +421,12 @@ def lens_advisory(comments, nodes, reviews, inline, scope, checks):
             if lens_finding(version):
                 record("inline", comment["id"], version, seen_at, clean_started_at)
 
-    outcome = "findings" if findings else (
-        observations[0]["outcome"] if len(observations) == 1 else "unknown"
-    )
+    if findings:
+        outcome = "findings"
+    elif clean_started_at is not None:
+        outcome = "reviewed_clean"
+    else:
+        outcome = observations[0]["outcome"] if len(observations) == 1 else "unknown"
     return outcome, observations, sorted(findings, key=fingerprint)
 
 

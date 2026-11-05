@@ -283,6 +283,24 @@ class GateTests(unittest.TestCase):
                 data["graph"]["pull"]["reviews"] = connection([review])
                 self.assert_blocked(data, "pr_lens_findings")
 
+    def test_standalone_lens_finding_uses_verified_rereview_cutoff(self):
+        for published, blocked in (("2026-11-05T12:50:00Z", False), (PENDING_TIME, True),
+                                   ("2026-11-05T12:58:00Z", True), ("2026-11-05T13:00:00Z", True)):
+            for number in (809, 812):
+                with self.subTest(published=published, number=number):
+                    data = fixture()
+                    rest, graph = comment("IC_finding", number, 320153949, "coldtea-pr-lens[bot]",
+                                          4690539, "<!-- pr-lens:finding e30= -->")
+                    rest.update(created_at=published, updated_at=published)
+                    graph.update(createdAt=published, updatedAt=published)
+                    data["comments"].append(rest)
+                    data["graph"]["comments"].append(graph)
+                    result = evaluate(data, 42)
+                    self.assertEqual(result.reason, "pr_lens_findings" if blocked else "eligible")
+                    self.assertEqual(result.evidence["pr_lens_outcome"],
+                                     "findings" if blocked else "reviewed_clean")
+                    self.assertEqual(bool(result.evidence["pr_lens_findings"]), blocked)
+
     def test_resolved_inline_finding_during_rereview_stays_blocking(self):
         for published, blocked in (("2026-11-05T12:50:00Z", False), (PENDING_TIME, True),
                                    ("2026-11-05T12:58:00Z", True), ("2026-11-05T13:00:00Z", True)):

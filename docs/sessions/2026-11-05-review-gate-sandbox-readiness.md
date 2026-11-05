@@ -92,3 +92,9 @@ All 54 focused and 172 total tests passed.
 Keep PR #17 Ready for Review. Confirm fresh Codex and CI on the published
 revision, and obtain separate owner authorization for any merge. A live
 sandbox needs a durable evidence ledger and separate authorization.
+
+Codex found that a verified re-review could not supersede an older standalone
+issue comment alongside the sticky. The evaluator now determines the unique
+authenticated re-review cutoff before assessing any issue-comment findings.
+The added regression reproduced the failure in both comment orders, and
+checks findings from before, at, during and after the review start.
