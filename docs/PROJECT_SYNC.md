@@ -9,6 +9,10 @@ create credentials, run an agent, or schedule itself.**
 A separate [disabled add-only writer](PROJECT_WRITER.md) has its own explicit
 scope, state digest, approval and execution gates. The planner never invokes it.
 
+The optional [event receiver pilot](PROJECT_EVENT_RECEIVER.md) records signed
+PR hints and fresh targeted observations. Use the planner for complete
+catch-up after a missed delivery.
+
 This is an experimental adapter to [coordination v1](COORDINATION.md) and the
 [handoff inbox](AGENT_INBOX.md), not a new requirement of AI_CONTEXT. The core
 initializer and its offline, dependency-free behavior are unchanged. See

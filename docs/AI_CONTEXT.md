@@ -134,6 +134,12 @@ history. The repository is both a reusable reference and a live example.
 
 ## Active Work
 
+- The [read-only event receiver pilot](PROJECT_EVENT_RECEIVER.md) is prepared
+  for review. It verifies signed PR events with a targeted GitHub read and
+  commits observation and deduplication evidence locally. The existing planner
+  provides on-demand catch-up. A live subscription and approved ingress are
+  still separate owner decisions.
+
 - PR #15 merged the read-only review observer and PR #16 merged the Ready for
   Review convention. PR #17 requires current-head Codex, CI and resolved
   conversations. PR Lens is advisory, with verified unresolved findings still
