@@ -27,3 +27,8 @@ Implementer verification independently passed29 focused stabilization/diagnostic
 tests and all118 tests. The original merged-main regression first failed for
 both new subcases with actual verified_present instead of required needs_review.
 This is offline evidence, not a live pilot or unattended-operation acceptance.
+
+November 5 correction. PR Lens found that both original subcases used archived
+items. The earlier review missed that fixture defect. The corrected assertions
+verify distinct approved archive states, and both cases reproduce false success
+with the pre-fix writer. See the [session update](../sessions/2026-11-04-terminal-original-preservation.md#november-5-fixture-correction).

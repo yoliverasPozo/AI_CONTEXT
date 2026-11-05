@@ -23,8 +23,13 @@ class Pages:
         self.wire=Wire();self.clock=clock;self.modes=modes;self.adds=0;self.attempt=0;self.cursors=[];self.step=0.1
         self.old=[]
         for index in range(3):
-            item=copy.deepcopy(self.wire.item);item['id']=f'OLD_{index}';item['content']['id']=f'I_{index}';self.old.append(item)
-        if 'changing_missing_archived_original' in modes:self.old[0]['isArchived']=True
+            item = copy.deepcopy(self.wire.item)
+            item['id'] = f'OLD_{index}'
+            item['content']['id'] = f'I_{index}'
+            item['isArchived'] = False
+            self.old.append(item)
+        if 'changing_missing_archived_original' in modes:
+            self.old[0]['isArchived'] = True
 
     def __call__(self,document,variables):
         if document==ADD_ONE:
@@ -111,9 +116,16 @@ class StabilizationTests(unittest.TestCase):
         self.assertEqual(len(failed),2)
 
     def test_terminal_count_change_cannot_hide_a_missing_original_with_a_later_stable_read(self):
-        for mode in ('changing_missing_original','changing_missing_archived_original'):
+        for mode, missing_archived in (('changing_missing_original', False),
+                                       ('changing_missing_archived_original', True)):
             with self.subTest(mode=mode):
                 result,wire,journal,backend,proposal,approval=self.run_case([mode,'stable'])
+                approved_archive_states = {
+                    item['id']: item['archived'] for item in proposal['before']['items']
+                }
+                self.assertEqual(approved_archive_states, {
+                    'OLD_0': missing_archived, 'OLD_1': False, 'OLD_2': False,
+                })
                 self.assertEqual(result['status'],'needs_review')
                 self.assertEqual(result['diagnostic']['code'],'original_item_changed')
                 self.assertEqual(result['diagnostic']['phase'],'readback')

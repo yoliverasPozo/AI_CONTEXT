@@ -129,8 +129,9 @@ history. The repository is both a reusable reference and a live example.
   PR13 stabilization merged as `c4d9fa2ae8d85fc99befdddc787bd9f4aa3edf19`;
   117 tests and all four exact-main CI jobs passed. Reusing
   `fix/project-readback-stabilization` for the terminal missing-original correction:
-  active/archived regression reproduced, guard added,118 tests and independent
-  review pass. No eligible missing PR found for another timed pilot; original
+  terminal guard added and archive-state fixtures corrected after PR Lens review.
+  Both missing-original cases reproduce the prior defect and pass on PR14, along
+  with all 118 tests. No eligible missing PR found for another timed pilot; original
   receipts stay immutable. See the [corrective session](sessions/2026-11-04-terminal-original-preservation.md),
   [review-gate proposal](reviews/2026-11-04-review-completion-gate.md),
   [session](sessions/2026-11-04-verification-stabilization.md),

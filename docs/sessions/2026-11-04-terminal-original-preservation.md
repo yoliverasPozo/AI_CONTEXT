@@ -18,7 +18,8 @@ no eligible missing PR; no proposal, operation ID, digest or expiry was created.
 Operational inventory and calibration evidence remain outside this public repo.
 
 Synthetic count4-to3 terminal omission followed by stable read reproduced
-`verified_present` on merged main for active and archived approved originals.
+`verified_present` on merged main. The initial two subcases both used archived
+originals. The November 5 fixture correction established both archive states.
 Per-item validation could not detect absent items; the typed count exception
 skipped final preservation checks before restarting.
 
@@ -74,3 +75,20 @@ Review the corrective draft PR and both integration reviews on its final head.
 After a separately authorized merge, recheck main/CI and reconcile for an eligible
 absent open PR; only then prepare a fresh timed proposal and stop for operation-
 specific approval. Review-gate implementation/activation require separate scope.
+
+## November 5 fixture correction
+
+PR Lens found that both regression subcases inherited archived originals from
+`Wire.item`. Set the cloned originals active in the stabilization fixture and
+archive only `OLD_0` in the archived-original case. Assert the archive states of
+all three items in the approved snapshot.
+
+The assertions failed against the old fixture. With the corrected fixture, the
+pre-fix writer still returned `verified_present` for both omissions in a separate
+offline process. Both cases now return `needs_review / original_item_changed`
+after one verification attempt. A second apply returns `recovery_required` and
+the synthetic transport records one mutation total.
+
+The focused stabilization and transport suites passed 28 tests. All 118 tests
+passed, including the direct `Wire` test for reading archived items. The
+correction touches only the stabilization test fixture and its assertions.
